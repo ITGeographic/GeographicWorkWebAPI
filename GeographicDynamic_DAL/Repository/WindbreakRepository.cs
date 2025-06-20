@@ -637,16 +637,16 @@ namespace GeographicDynamic_DAL.Repository
 
             List<Qarsafari> newQarsafari = geographicDynamicDbContext.Qarsafaris.OrderBy(m => m.UniqId).ToList();
             ////ვამოწმებთ Excel-ში თუ არის დუპლიკატი Unic-Liter - ID - ები
-            //var ShemowmebaUnicLiterExcelshiResult = _windbreakMethods.ShemowmebaUnicLiterExcelshi();
-            //if (ShemowmebaUnicLiterExcelshiResult.Success == false)
-            //{
-            //    return new Result<bool>
-            //    {
-            //        Success = false,
-            //        StatusCode = System.Net.HttpStatusCode.BadGateway,
-            //        Message = "მოხდა შეცდომა Access ფაილის წაკითხვისას" + ShemowmebaUnicLiterExcelshiResult.Message
-            //    };
-            //}
+            var ShemowmebaUnicLiterExcelshiResult = _windbreakMethods.ShemowmebaUnicLiterExcelshi();
+            if (ShemowmebaUnicLiterExcelshiResult.Success == false)
+            {
+                return new Result<bool>
+                {
+                    Success = false,
+                    StatusCode = System.Net.HttpStatusCode.BadGateway,
+                    Message = "მოხდა შეცდომა Access ფაილის წაკითხვისას" + ShemowmebaUnicLiterExcelshiResult.Message
+                };
+            }
 
 
 
@@ -740,6 +740,18 @@ namespace GeographicDynamic_DAL.Repository
                 };
             }
 
+            ///////////// ჯერ არ ვიყიენებთ მარა გამოსაყენებელია ხეხილში ვამოწმებთ დუბლიკატები ხომ არ არის
+            var QarsafariXexilisShemowmebaResult = _windbreakMethods.QarsafariXexilisShemowmeba();
+            if (QarsafariXexilisShemowmebaResult.Success == false)
+            {
+                return new Result<bool>
+                {
+                    Success = false,
+                    StatusCode = System.Net.HttpStatusCode.BadGateway,
+                    Message = QarsafariXexilisShemowmebaResult.Message
+                };
+            }
+
             ////aq unda fotoebi renamephotos
             //if (excelReadDTO.GadanomriliaFotoebi != true)
             //{
@@ -819,18 +831,7 @@ namespace GeographicDynamic_DAL.Repository
 
             ////////////axali funqcia UIDREPLACE () {} // table qarsafarshi
             ////////////SET UID = str([ლიტერი ID]) + str([უნიკ ID]) // str chventan aris Convert.ToString()
-            ///////////// ჯერ არ ვიყიენებთ მარა გამოსაყენებელია ხეხილში ვამოწმებთ დუბლიკატები ხომ არ არის
-            var QarsafariXexilisShemowmebaResult = _windbreakMethods.QarsafariXexilisShemowmeba();
-            if (QarsafariXexilisShemowmebaResult.Success == false)
-            {
-                return new Result<bool>
-                {
-                    Success = false,
-                    StatusCode = System.Net.HttpStatusCode.BadGateway,
-                    Message = QarsafariXexilisShemowmebaResult.Message
-                };
-            }
-
+            
 
 
             // qarsafari ცხრილის დაგრუპვა uniqid ის მიხედვით და გადატანა qarsafariGrouped ში
@@ -900,7 +901,7 @@ namespace GeographicDynamic_DAL.Repository
 
 
             /////////ამით ვიძახებთ SQL stored proccedure-ს რადგან შევიტანოთ არქივში გადათვლილი მონაცემები და შემდეგისთვის გამოვიყენოთ 
-            geographicDynamicDbContext.Database.ExecuteSqlRaw("[dbo].[insertQarasafariToArqivi]");
+            //geographicDynamicDbContext.Database.ExecuteSqlRaw("[dbo].[insertQarasafariToArqivi]");
 
 
             ///////////აქ ხდება უშუალოდ ექსპორტი სიისა რაც შევინახეთ qarsafariGrouped-ში

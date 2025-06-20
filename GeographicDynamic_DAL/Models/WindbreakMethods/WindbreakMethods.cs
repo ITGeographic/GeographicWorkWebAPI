@@ -626,12 +626,17 @@ namespace GeographicDynamic_DAL.Models.WindbreakMethods
                 }
 
                 // Compare directory entries with qarsafaris and windbreakMdbs
-                List<string> directoryEntryList = directoryEntries.Select(de => $"{de.LitterId}-{de.UniqId}").ToList();
+                //List<string> directoryEntryList = directoryEntries.Select(de => $"{de.LitterId}-{de.UniqId}").ToList();
                 List<string> qarsafariList = qarsafaris.Select(q => $"{q.LiterId}-{q.UniqId}").ToList();
                 List<string> windbreakMdbList = windbreakMdbs.Select(w => $"{w.LiterId}-{w.UniqId}").ToList();
 
-                var missingInDirectory = qarsafariList.Concat(windbreakMdbList).Except(directoryEntryList).ToList();
-                var missingInDatabase = directoryEntryList.Except(qarsafariList.Concat(windbreakMdbList)).ToList();
+                //var missingInDirectory = qarsafariList.Concat(windbreakMdbList).Except(directoryEntryList).ToList();
+                //var missingInDatabase = directoryEntryList.Except(qarsafariList.Concat(windbreakMdbList)).ToList();
+
+                // Differences between qarsafariList and windbreakMdbList
+                var missingInWindbreak = qarsafariList.Except(windbreakMdbList).ToList();
+                var missingInQarsafari = windbreakMdbList.Except(qarsafariList).ToList();
+
 
                 // aleks
                 //if (missingInDirectory.Any() || missingInDatabase.Any())
