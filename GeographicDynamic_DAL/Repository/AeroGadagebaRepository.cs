@@ -28,7 +28,7 @@ namespace GeographicDynamic_DAL.Repository
 
             try
             {
-                string ExcelPath = @"D:\Projects\2025\QarsaffariDatvlebi\TestAero\aero.xlsx";
+                string ExcelPath = @"\\server\Programmers\Alex_Script\GeographicWorkWebAPI\aero.xlsx";
                 xlWorkbook = xlApp.Workbooks.Open(ExcelPath);
                 xlWorksheet = (_Worksheet)xlWorkbook.Sheets[1];
                 xlRange = xlWorksheet.UsedRange;
@@ -62,7 +62,7 @@ namespace GeographicDynamic_DAL.Repository
                 }
 
                 // ===== Organize images & write coordinates =====
-                OrganizeImagesAndWriteCoordinates(ExcelInfo, @"D:\Projects\2025\QarsaffariDatvlebi\TestAero\images");
+                OrganizeImagesAndWriteCoordinates(ExcelInfo, @"\\server\Programmers\Alex_Script\GeographicWorkWebAPI\images");
 
                 return new Result<List<AeroRecord>>
                 {
