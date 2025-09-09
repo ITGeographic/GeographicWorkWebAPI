@@ -9,7 +9,7 @@ namespace GeographicWorkWebAPI.Controllers
     public class AeroController : Controller
     {
         private readonly IAero _aero;
-
+        //aleks
         public AeroController(IAero aero) 
         {
             _aero = aero;
