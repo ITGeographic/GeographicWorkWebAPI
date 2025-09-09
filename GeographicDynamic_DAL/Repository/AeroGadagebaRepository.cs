@@ -1,18 +1,13 @@
 ﻿using GeographicDynamicWebAPI.Wrappers;
 using System;
 using System.Collections.Generic;
-using Microsoft.Office.Interop.Excel;
+using ClosedXML.Excel;
 using GeographicDynamic_DAL.Interface;
 using System.IO;
 using System.Drawing;
-using System.Runtime.InteropServices;
-using Font = System.Drawing.Font;
-using System.Drawing.Imaging;
-using System.Runtime.Serialization;
-using RedCorners.ExifLibrary;
-using System.Diagnostics;
 using System.Globalization;
-using static System.Net.Mime.MediaTypeNames;
+using System.Linq;
+using System.Diagnostics;
 
 namespace GeographicDynamic_DAL.Repository
 {
@@ -21,44 +16,49 @@ namespace GeographicDynamic_DAL.Repository
         public Result<List<AeroRecord>> ExcelisWakiTxvaAero()
         {
             List<AeroRecord> ExcelInfo = new List<AeroRecord>();
-            Microsoft.Office.Interop.Excel.Application xlApp = new Microsoft.Office.Interop.Excel.Application();
-            Workbook xlWorkbook = null;
-            _Worksheet xlWorksheet = null;
-            Microsoft.Office.Interop.Excel.Range xlRange = null;
 
             try
             {
-                string ExcelPath = @"\\server\Programmers\Alex_Script\GeographicWorkWebAPI\aero.xlsx";
-                xlWorkbook = xlApp.Workbooks.Open(ExcelPath);
-                xlWorksheet = (_Worksheet)xlWorkbook.Sheets[1];
-                xlRange = xlWorksheet.UsedRange;
+                string ExcelPath = @"D:\Projects\2025\QarsaffariDatvlebi\TestAero\aero.xlsx";
 
-                int rowCount = xlRange.Rows.Count;
-
-                for (int i = 2; i <= rowCount; i++) // assuming first row is headers
+                using (var workbook = new XLWorkbook(ExcelPath))
                 {
-                    var objectID = xlRange.Cells[i, 1]?.Value2?.ToString();
-                    var cellDate = xlRange.Cells[i, 2]?.Value2;
-                    DateTime? dataTaken = null;
+                    var worksheet = workbook.Worksheet(1);
+                    var rows = worksheet.RowsUsed().Skip(1); // skip header row
 
-                    if (cellDate != null)
+                    foreach (var row in rows)
                     {
-                        if (cellDate is double d)
-                            dataTaken = DateTime.FromOADate(d);
-                        else if (cellDate is string s && DateTime.TryParse(s, out var parsed))
-                            dataTaken = parsed;
+                        string objectID = row.Cell(1).GetValue<string>();
+                        var cell = row.Cell(2);
+                        DateTime? dataTaken = null;
+
+                        if (!cell.IsEmpty()) // check if the cell is not empty
+                        {
+                            if (cell.DataType == XLDataType.DateTime)
+                            {
+                                dataTaken = cell.GetDateTime();
+                            }
+                            else if (double.TryParse(cell.GetValue<string>(), out double oaDate))
+                            {
+                                dataTaken = DateTime.FromOADate(oaDate);
+                            }
+                            else if (DateTime.TryParse(cell.GetValue<string>(), out var parsed))
+                            {
+                                dataTaken = parsed;
+                            }
+                        }
+
+                        string xValue = row.Cell(3).GetValue<string>();
+                        string yValue = row.Cell(4).GetValue<string>();
+
+                        ExcelInfo.Add(new AeroRecord
+                        {
+                            ObjectID = objectID,
+                            DataTaken = dataTaken,
+                            X = xValue,
+                            Y = yValue
+                        });
                     }
-
-                    var xValue = xlRange.Cells[i, 3]?.Value2?.ToString();
-                    var yValue = xlRange.Cells[i, 4]?.Value2?.ToString();
-
-                    ExcelInfo.Add(new AeroRecord
-                    {
-                        ObjectID = objectID,
-                        DataTaken = dataTaken,
-                        X = xValue,
-                        Y = yValue
-                    });
                 }
 
                 // ===== Organize images & write coordinates =====
@@ -68,6 +68,7 @@ namespace GeographicDynamic_DAL.Repository
                 {
                     Success = true,
                     StatusCode = System.Net.HttpStatusCode.OK,
+                    //Data = ExcelInfo
                 };
             }
             catch (Exception ex)
@@ -78,18 +79,6 @@ namespace GeographicDynamic_DAL.Repository
                     StatusCode = System.Net.HttpStatusCode.BadGateway,
                     Message = "ექსელის წაკითხვა ვერ მოხერხდა: " + ex.Message
                 };
-            }
-            finally
-            {
-                if (xlRange != null) Marshal.FinalReleaseComObject(xlRange);
-                if (xlWorksheet != null) Marshal.FinalReleaseComObject(xlWorksheet);
-                if (xlWorkbook != null)
-                {
-                    xlWorkbook.Close(false);
-                    Marshal.FinalReleaseComObject(xlWorkbook);
-                }
-                xlApp.Quit();
-                Marshal.FinalReleaseComObject(xlApp);
             }
         }
 
@@ -112,6 +101,7 @@ namespace GeographicDynamic_DAL.Repository
                     // skip unreadable images
                 }
             }
+
             // Step 2: Move images into ObjectID folders using time ranges
             for (int i = 0; i < excelData.Count; i++)
             {
@@ -123,7 +113,6 @@ namespace GeographicDynamic_DAL.Repository
                                     ? excelData[i + 1].DataTaken
                                     : null; // no upper limit for the last one
 
-                // Always create folder for current ObjectID
                 string targetFolder = Path.Combine(imagePath, currentRecord.ObjectID);
                 if (!Directory.Exists(targetFolder))
                     Directory.CreateDirectory(targetFolder);
@@ -135,7 +124,7 @@ namespace GeographicDynamic_DAL.Repository
 
                     bool inRange = endTime.HasValue
                         ? (photoDate >= startTime && photoDate < endTime.Value)
-                        : (photoDate >= startTime); // last range gets all remaining images
+                        : (photoDate >= startTime);
 
                     if (inRange)
                     {
@@ -152,7 +141,6 @@ namespace GeographicDynamic_DAL.Repository
                     }
                 }
             }
-
 
             // Step 3: Write coordinates on images
             var objectFolders = Directory.GetDirectories(imagePath);
@@ -186,7 +174,6 @@ namespace GeographicDynamic_DAL.Repository
             }
         }
 
-
         private DateTime? GetPhotoDateTaken(string path)
         {
             try
@@ -201,8 +188,8 @@ namespace GeographicDynamic_DAL.Repository
                         var prop = img.GetPropertyItem(PropertyTagDateTaken);
                         string dateStr = System.Text.Encoding.ASCII.GetString(prop.Value).Trim('\0');
                         if (DateTime.TryParseExact(dateStr, "yyyy:MM:dd HH:mm:ss",
-                            System.Globalization.CultureInfo.InvariantCulture,
-                            System.Globalization.DateTimeStyles.None, out DateTime dt))
+                            CultureInfo.InvariantCulture,
+                            DateTimeStyles.None, out DateTime dt))
                         {
                             return dt;
                         }
@@ -211,31 +198,9 @@ namespace GeographicDynamic_DAL.Repository
             }
             catch { }
 
-            // fallback
             return File.GetLastWriteTime(path);
         }
-        // Helper method
-        static void SetProperty(int id, double value)
-        {
-            // კონვერტირება დეგრადებიდან DMS-ში (degrees/minutes/seconds)
-            uint[] rational = ConvertToRational(value);
 
-        }
-        static uint[] ConvertToRational(double decimalDegrees)
-        {
-            decimalDegrees = Math.Abs(decimalDegrees);
-            int degrees = (int)decimalDegrees;
-            double minutesFloat = (decimalDegrees - degrees) * 60;
-            int minutes = (int)minutesFloat;
-            double seconds = (minutesFloat - minutes) * 60;
-
-            return new uint[]
-            {
-            (uint)degrees, 1,
-            (uint)minutes, 1,
-            (uint)(seconds * 100), 100 // Fractional seconds
-            };
-        }
         public static void WriteCoordinates(string imagePath, double latitude, double longitude)
         {
             try
@@ -278,7 +243,6 @@ namespace GeographicDynamic_DAL.Repository
                 Console.WriteLine($"Error writing GPS: {ex.Message}");
             }
         }
-
 
         // --- Helper: Convert UTM to Lat/Lon ---
         private static (double Latitude, double Longitude) UtmToLatLon(double easting, double northing, int zoneNumber, bool isNorthernHemisphere)
@@ -333,8 +297,6 @@ namespace GeographicDynamic_DAL.Repository
 
             return (lat, lon);
         }
-
-
     }
 
     public class AeroRecord
