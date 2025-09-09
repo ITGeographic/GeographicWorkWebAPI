@@ -32,7 +32,7 @@ builder.Services.AddTransient<IWindbreak, WindbreakRepository>();
 builder.Services.AddTransient<IColumnName, ColumnNameRepository>();
 builder.Services.AddTransient<IChromeBot, ChromeBotRepository>();
 builder.Services.AddAutoMapper(typeof(MapperConfig));
-//aleks
+//aleksd
 var app = builder.Build();
 
 // Base path (subfolder)
