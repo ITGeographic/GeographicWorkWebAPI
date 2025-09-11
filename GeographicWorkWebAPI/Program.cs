@@ -29,6 +29,7 @@ builder.Services.AddTransient<DictionaryDTO>();
 builder.Services.AddTransient<IVarjisFarti, VarjisFartiRepository>();
 builder.Services.AddTransient<IAero, AeroGadagebaRepository>();
 builder.Services.AddTransient<IAeroWithObjectId, AeroGadagebaWithObjectIdRepository>();
+builder.Services.AddTransient<IAeroWithoutFolders, AeroGadagebaWithoutFoldersRepository>();
 builder.Services.AddTransient<IWindbreak, WindbreakRepository>();
 builder.Services.AddTransient<IColumnName, ColumnNameRepository>();
 builder.Services.AddTransient<IChromeBot, ChromeBotRepository>();
