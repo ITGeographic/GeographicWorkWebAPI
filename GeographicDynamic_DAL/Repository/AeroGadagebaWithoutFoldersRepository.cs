@@ -1,25 +1,29 @@
-﻿using GeographicDynamicWebAPI.Wrappers;
+﻿using ClosedXML.Excel;
+using GeographicDynamic_DAL.Interface;
+using GeographicDynamicWebAPI.Wrappers;
 using System;
 using System.Collections.Generic;
-using ClosedXML.Excel;
-using GeographicDynamic_DAL.Interface;
-using System.IO;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
-using System.Diagnostics;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace GeographicDynamic_DAL.Repository
 {
-    public class AeroGadagebaRepository : IAero
+    public class AeroGadagebaWithoutFoldersRepository : IAeroWithoutFolders
     {
-        public Result<List<AeroRecord>> ExcelisWakiTxvaAero()
+
+        public Result<List<AeroRecordWithoutFolders>> ExcelisWakiTxvaAeroWithoutFolders()
         {
-            List<AeroRecord> ExcelInfo = new List<AeroRecord>();
+            List<AeroRecordWithoutFolders> ExcelInfo = new List<AeroRecordWithoutFolders>();
 
             try
             {
                 string ExcelPath = @"D:\Projects\2025\QarsaffariDatvlebi\TestAero\GPS_pnt_time.xlsx";
+                string ImagePath = @"D:\Projects\2025\QarsaffariDatvlebi\TestAero\images";
 
+                // Read Excel
                 using (var workbook = new XLWorkbook(ExcelPath))
                 {
                     var worksheet = workbook.Worksheet(1);
@@ -38,7 +42,7 @@ namespace GeographicDynamic_DAL.Repository
                                 dataTaken = parsed;
                         }
 
-                        ExcelInfo.Add(new AeroRecord
+                        ExcelInfo.Add(new AeroRecordWithoutFolders
                         {
                             Latitude = latStr,
                             Longitude = lonStr,
@@ -47,10 +51,10 @@ namespace GeographicDynamic_DAL.Repository
                     }
                 }
 
-                // ===== New Logic =====
-                OrganizeImagesByEarliest(ExcelInfo, @"D:\Projects\2025\QarsaffariDatvlebi\TestAero\images");
+                // Write GPS to each image
+                WriteGpsFromExcelMatch(ExcelInfo, ImagePath);
 
-                return new Result<List<AeroRecord>>
+                return new Result<List<AeroRecordWithoutFolders>>
                 {
                     Success = true,
                     StatusCode = System.Net.HttpStatusCode.OK,
@@ -58,7 +62,7 @@ namespace GeographicDynamic_DAL.Repository
             }
             catch (Exception ex)
             {
-                return new Result<List<AeroRecord>>
+                return new Result<List<AeroRecordWithoutFolders>>
                 {
                     Success = false,
                     StatusCode = System.Net.HttpStatusCode.BadGateway,
@@ -67,72 +71,41 @@ namespace GeographicDynamic_DAL.Repository
             }
         }
 
-        private void OrganizeImagesByEarliest(List<AeroRecord> excelData, string imagePath)
+        private void WriteGpsFromExcelMatch(List<AeroRecordWithoutFolders> excelData, string imagePath)
         {
-            while (true)
+            var allFiles = Directory.GetFiles(imagePath, "*.*", SearchOption.TopDirectoryOnly).ToList();
+
+            foreach (var file in allFiles)
             {
-                // Refresh remaining files
-                var allFiles = Directory.GetFiles(imagePath, "*.*", SearchOption.TopDirectoryOnly).ToList();
-                if (allFiles.Count == 0) break;
-
-                // Step 1: find earliest image
-                var earliestFile = allFiles.OrderBy(f => File.GetLastWriteTime(f)).First();
-                DateTime earliestDate = File.GetLastWriteTime(earliestFile);
-
-                // Step 2: adjust time to Georgian local (+4h offset correction)
-                DateTime adjustedDate = earliestDate.AddHours(-4);
-
-                // Step 3: find Excel match
-                //var match = excelData.FirstOrDefault(r =>
-                //    r.DataTaken.HasValue &&
-                //    Math.Abs((r.DataTaken.Value - adjustedDate).TotalSeconds) <= 3);
-                var match = excelData
-                    .Where(r => r.DataTaken.HasValue)
-                    .OrderBy(r => Math.Abs((r.DataTaken.Value - adjustedDate).TotalSeconds))
-                    .FirstOrDefault();
-
-                // Step 4: create folder named after earliest image
-                string folderName = Path.GetFileNameWithoutExtension(earliestFile);
-                string targetFolder = Path.Combine(imagePath, folderName);
-                if (!Directory.Exists(targetFolder))
-                    Directory.CreateDirectory(targetFolder);
-
-                // Step 5: find all images within +3s window
-                DateTime windowEnd = earliestDate.AddSeconds(3);
-                var imagesInWindow = allFiles
-                    .Where(f =>
-                    {
-                        var dt = File.GetLastWriteTime(f);
-                        return dt >= earliestDate && dt <= windowEnd;
-                    })
-                    .ToList();
-
-                // Step 6: move them & write GPS if Excel matched
-                foreach (var file in imagesInWindow)
+                try
                 {
-                    string destFile = Path.Combine(targetFolder, Path.GetFileName(file));
-                    try
-                    {
-                        if (File.Exists(destFile)) File.Delete(destFile);
-                        File.Move(file, destFile);
+                    // Step 1: get adjusted image time (-4 hours)
+                    DateTime adjustedDate = File.GetLastWriteTime(file).AddHours(-4);
 
-                        if (match != null &&
-                            double.TryParse(match.Latitude, NumberStyles.Any, CultureInfo.InvariantCulture, out double lat) &&
-                            double.TryParse(match.Longitude, NumberStyles.Any, CultureInfo.InvariantCulture, out double lon))
-                        {
-                            WriteCoordinates(destFile, lat, lon);
-                        }
-                    }
-                    catch (Exception ex)
+                    // Step 2: find closest Excel time
+                    var match = excelData
+                        .Where(r => r.DataTaken.HasValue)
+                        .OrderBy(r => Math.Abs((r.DataTaken.Value - adjustedDate).TotalSeconds))
+                        .FirstOrDefault();
+
+                    if (match != null &&
+                        double.TryParse(match.Latitude, NumberStyles.Any, CultureInfo.InvariantCulture, out double lat) &&
+                        double.TryParse(match.Longitude, NumberStyles.Any, CultureInfo.InvariantCulture, out double lon))
                     {
-                        Console.WriteLine($"Failed to move/write GPS for {file}: {ex.Message}");
+                        WriteCoordinates(file, lat, lon);
+                        Console.WriteLine($"GPS written to {Path.GetFileName(file)} ({lat}, {lon})");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"No valid Excel match for {Path.GetFileName(file)}");
                     }
                 }
-
-                // Loop continues, new earliest will be picked from remaining files
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Failed to process {file}: {ex.Message}");
+                }
             }
         }
-
 
         public static void WriteCoordinates(string imagePath, double latitude, double longitude)
         {
@@ -177,11 +150,14 @@ namespace GeographicDynamic_DAL.Repository
             }
         }
     }
+}
 
-    public class AeroRecord
-    {
-        public string Latitude { get; set; }
-        public string Longitude { get; set; }
-        public DateTime? DataTaken { get; set; }
-    }
+public class AeroRecordWithoutFolders
+{
+    public string ObjectID { get; set; }
+    public DateTime? DataTaken { get; set; }
+    public string X { get; set; }
+    public string Y { get; set; }
+    public string Latitude { get; set; }
+    public string Longitude { get; set; }
 }

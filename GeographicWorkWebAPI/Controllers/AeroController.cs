@@ -10,10 +10,13 @@ namespace GeographicWorkWebAPI.Controllers
     {
         private readonly IAero _aero;
         private readonly IAeroWithObjectId _aeroWithObjectId;
-        public AeroController(IAero aero,IAeroWithObjectId aeroWithObjectId) 
+        private readonly IAeroWithoutFolders _aeroWithoutFolders;
+
+        public AeroController(IAero aero,IAeroWithObjectId aeroWithObjectId, IAeroWithoutFolders aeroWithoutFolders) 
         {
             _aero = aero;
             _aeroWithObjectId = aeroWithObjectId;
+            _aeroWithoutFolders = aeroWithoutFolders;
         }
 
         [HttpPost("AeroGadageba")]
@@ -27,6 +30,13 @@ namespace GeographicWorkWebAPI.Controllers
         public IActionResult ExcelisWakiTxvaAeroWithObjectId()
         {
             var result = _aeroWithObjectId.ExcelisWakiTxvaAeroWithObjectId();
+            if (result.Success) return Ok(result);
+            return BadRequest(result);
+        }
+        [HttpPost("AeroGadagebaWithoutFolders")]
+        public IActionResult ExcelisWakiTxvaAeroWithoutFolders()
+        {
+            var result = _aeroWithoutFolders.ExcelisWakiTxvaAeroWithoutFolders();
             if (result.Success) return Ok(result);
             return BadRequest(result);
         }

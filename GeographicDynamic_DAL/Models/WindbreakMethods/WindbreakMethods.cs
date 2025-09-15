@@ -1553,22 +1553,44 @@ namespace GeographicDynamic_DAL.Models.WindbreakMethods
                     foreach (var item in GeographicDynamicDbContext.QarsafariGroupeds)
                     {
                         // Find corresponding row in Access table
-                        System.Data.DataRow[] rows = dataTable.Select($"{uniqid} = '{item.UniqIdOld}' AND {literid} = '{item.LiterId}'");
+                        System.Data.DataRow[] rows = dataTable.Select($"{uniqid} = '{item.UniqIdOld}' AND {literid} = {item.LiterId}");
+
                         if (rows.Length > 0)
                         {
-                            rows[0]["Photo_N"] = item.PhotoN;
-                            rows[0]["shrubbery"] = item.Shrubbery;
-                            rows[0]["Woody_plant_percent"] = item.WoodyPlantPercent;
-                            rows[0]["Woody_plant_quantity"] = item.WoodyPlantQuantity;
-                            rows[0]["woody_plant_species"] = item.WoodyPlantSpecies;
-                            rows[0]["In_good_condition"] = item.InGoodCondition;
-                            rows[0]["chopped_down"] = item.ChoppedDown;
-                            rows[0]["rampike"] = item.Rampike;
-                            rows[0]["species_medium_age"] = item.SpeciesMediumAge;
-                            rows[0]["Company"] = item.Company;
-                            rows[0]["Field_Operator"] = item.FieldOperator;
-                            rows[0]["Date_"] = item.Date;
-                            rows[0][newColumnName] = item.UniqId;
+
+                            foreach (var row in rows) // update all matches (in case there are more than one)
+                            {
+                                row["Photo_N"] = item.PhotoN;
+                                row["shrubbery"] = item.Shrubbery;
+                                row["Woody_plant_percent"] = item.WoodyPlantPercent;
+                                row["Woody_plant_quantity"] = item.WoodyPlantQuantity;
+                                row["woody_plant_species"] = item.WoodyPlantSpecies;
+                                row["In_good_condition"] = item.InGoodCondition;
+                                row["chopped_down"] = item.ChoppedDown;
+                                row["rampike"] = item.Rampike;
+                                row["species_medium_age"] = item.SpeciesMediumAge;
+                                row["Company"] = item.Company;
+                                row["Field_Operator"] = item.FieldOperator;
+                                row["Date_"] = item.Date;
+                                row[newColumnName] = item.UniqId;
+                                row["UNIQ_ID"] = item.UniqId;
+                                row["UNIQ_ID_OLD"] = item.UniqIdOld;
+                            }
+                            //rows[0]["Photo_N"] = item.PhotoN;
+                            //rows[0]["shrubbery"] = item.Shrubbery;
+                            //rows[0]["Woody_plant_percent"] = item.WoodyPlantPercent;
+                            //rows[0]["Woody_plant_quantity"] = item.WoodyPlantQuantity;
+                            //rows[0]["woody_plant_species"] = item.WoodyPlantSpecies;
+                            //rows[0]["In_good_condition"] = item.InGoodCondition;
+                            //rows[0]["chopped_down"] = item.ChoppedDown;
+                            //rows[0]["rampike"] = item.Rampike;
+                            //rows[0]["species_medium_age"] = item.SpeciesMediumAge;
+                            //rows[0]["Company"] = item.Company;
+                            //rows[0]["Field_Operator"] = item.FieldOperator;
+                            //rows[0]["Date_"] = item.Date;
+                            //rows[0][newColumnName] = item.UniqId;
+                            //rows[0]["UNIQ_ID"] = item.UniqId;
+                            //rows[0]["UNIQ_ID_OLD"] = item.UniqIdOld;
                         }
                     }
 
@@ -1850,6 +1872,7 @@ namespace GeographicDynamic_DAL.Models.WindbreakMethods
         {
             public string Uniq_Id_MDB { get; set; }
             public string Uniq_ID_gadanomrili { get; set; }
+            public string Litter_Id { get; set; }
         }
         List<storedMDB> excelDataList = new List<storedMDB>();
 
@@ -1899,12 +1922,16 @@ namespace GeographicDynamic_DAL.Models.WindbreakMethods
                             if (reader.HasRows)
                             {
                                 int uniqIdNewIndex = reader.GetOrdinal("Uniq_ID_NEW_Gadanomrili");
-                                int uniqIdIndex = reader.GetOrdinal("UNIQ_ID");
+                                int uniqIdIndex = reader.GetOrdinal("UNIQ_ID_OLD");
+                                int litterId = reader.GetOrdinal("Liter_ID");
 
                                 while (reader.Read())
                                 {
                                     string uniqIdNewValue = reader.GetValue(uniqIdNewIndex).ToString();
                                     string uniqIdValue = reader.GetValue(uniqIdIndex).ToString();
+                                    string LitterIdValue = reader.GetValue(litterId).ToString();
+
+
                                     if (!accessData.ContainsKey(uniqIdNewValue))
                                     {
                                         accessData[uniqIdNewValue] = uniqIdValue;
@@ -1912,7 +1939,8 @@ namespace GeographicDynamic_DAL.Models.WindbreakMethods
                                     excelDataList.Add(new storedMDB
                                     {
                                         Uniq_Id_MDB = uniqIdValue,
-                                        Uniq_ID_gadanomrili = uniqIdNewValue
+                                        Uniq_ID_gadanomrili = uniqIdNewValue,
+                                        Litter_Id = LitterIdValue
                                     });
 
                                 }
@@ -2303,27 +2331,41 @@ namespace GeographicDynamic_DAL.Models.WindbreakMethods
 
                     if (!string.IsNullOrEmpty(excelUniqId) && !string.IsNullOrEmpty(excelLitterId))
                     {
-                        var matchedData = dbData.FirstOrDefault(item => item.UniqIdOld.ToString() == excelUniqId && item.LiterId.ToString() == excelLitterId);
+                        var matchedData = dbData.FirstOrDefault(item =>
+                            item.UniqIdOld.ToString() == excelUniqId &&
+                            item.LiterId.ToString() == excelLitterId);
 
                         if (matchedData != null)
                         {
+                            // Write new uniqId from DB
                             worksheet.Cells[i, column].Value = matchedData.UniqId;
+
+                            // Find corresponding MDB value safely
+                            //var match = excelDataList
+                            //    .FirstOrDefault(m => m.Uniq_ID_gadanomrili == matchedData.UniqId.ToString());
+
+                            var match = excelDataList.FirstOrDefault(m =>
+                                        m.Uniq_ID_gadanomrili == matchedData.UniqId.ToString() &&
+                                        m.Litter_Id == matchedData.LiterId.ToString());
+
+                            if (match != null)
+                            {
+                                worksheet.Cells[i, column + 1].Value = match.Uniq_Id_MDB;
+                            }
+                            else
+                            {
+                                // Optional logging in case MDB is missing
+                                Console.WriteLine($"No MDB match found for row {i}, UniqId: {matchedData.UniqId}");
+                            }
                         }
                         else
                         {
-                            // Log or handle rows where no match was found
-                            // You can also throw an exception here if needed
-                            // For example:
-                            throw new Exception($"No matching data found in database for row {i}");
-                        }
-                        if (true)
-                        {
-                            worksheet.Cells[i, column + 1].Value = excelDataList.FirstOrDefault(m => m.Uniq_ID_gadanomrili == matchedData.UniqId.ToString()).Uniq_Id_MDB;
-
+                            // Handle rows with no database match
+                            Console.WriteLine($"No DB match found for row {i}, UniqId: {excelUniqId}, LitterId: {excelLitterId}");
                         }
                     }
-                    
                 }
+
 
                 // Save changes and cleanup
                 workbook.Save();
