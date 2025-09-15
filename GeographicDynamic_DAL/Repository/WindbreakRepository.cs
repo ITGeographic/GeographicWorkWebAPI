@@ -606,9 +606,9 @@ namespace GeographicDynamic_DAL.Repository
 
 
             /////////ფუნქციების გამოძახებები თავის შეცდომიანად თუ სადმე რამე იყო 
-            // ვკითხულობთ ექსელიდან ინფორმაციას და შეგვაქვს sql ში qarsafari ცხრილი
-            var exceliswakitxvarestult = _windbreakMethods.ExcelisWakitxva(excelReadDTO);
-            if (exceliswakitxvarestult.Success == false)
+            //// ვკითხულობთ ექსელიდან ინფორმაციას და შეგვაქვს sql ში qarsafari ცხრილი
+            var ExcelisWakitxvaRestult = _windbreakMethods.ExcelisWakitxva(excelReadDTO);
+            if (ExcelisWakitxvaRestult.Success == false)
             {
                 return new Result<bool>
                 {
@@ -630,7 +630,7 @@ namespace GeographicDynamic_DAL.Repository
             }
 
             List<Qarsafari> newQarsafari = geographicDynamicDbContext.Qarsafaris.OrderBy(m => m.UniqId).ToList();
-            ////ვამოწმებთ Excel-ში თუ არის დუპლიკატი Unic-Liter - ID - ები
+            //ვამოწმებთ Excel-ში თუ არის დუპლიკატი Unic-Liter - ID - ები
             var ShemowmebaUnicLiterExcelshiResult = _windbreakMethods.ShemowmebaUnicLiterExcelshi();
             if (ShemowmebaUnicLiterExcelshiResult.Success == false)
             {
@@ -773,17 +773,17 @@ namespace GeographicDynamic_DAL.Repository
                 };
             }
 
-            //// შევსება ველების სადაც ვინახავთ რომელი მუნიციპალიტეტია და რომელი ეტაპია დათვლის 
-            //var FillProjectEtapiIDSResult = _windbreakMethods.FillProjectEtapiIDS(excelReadDTO.ProjectNameID, excelReadDTO.EtapiID);
-            //if (FillProjectEtapiIDSResult.Success = false)
-            //{
-            //    return new Result<bool>
-            //    {
-            //        Success = false,
-            //        StatusCode = System.Net.HttpStatusCode.BadGateway,
-            //        Message = "მოხდა შეცდომა პროექტის სახელის და ეტაპის მინიჭების დროს "
-            //    };
-            //}
+            // შევსება ველების სადაც ვინახავთ რომელი მუნიციპალიტეტია და რომელი ეტაპია დათვლის 
+            var FillProjectEtapiIDSResult = _windbreakMethods.FillProjectEtapiIDS(excelReadDTO.ProjectNameID, excelReadDTO.EtapiID);
+            if (FillProjectEtapiIDSResult.Success = false)
+            {
+                return new Result<bool>
+                {
+                    Success = false,
+                    StatusCode = System.Net.HttpStatusCode.BadGateway,
+                    Message = "მოხდა შეცდომა პროექტის სახელის და ეტაპის მინიჭების დროს "
+                };
+            }
             //საკუთრებაში ვწერთ სახელმწიფოა თუ კერძო
             var FillSakutrebaIsKerdzoOrSaxelmwifoResult = FillSakutrebaIsKerdzoOrSaxelmwifo();
             if (FillSakutrebaIsKerdzoOrSaxelmwifoResult.Success == false)
@@ -810,7 +810,17 @@ namespace GeographicDynamic_DAL.Repository
 
             ////////////axali funqcia UIDREPLACE () {} // table qarsafarshi
             ////////////SET UID = str([ლიტერი ID]) + str([უნიკ ID]) // str chventan aris Convert.ToString()
-            
+            ///////////// ჯერ არ ვიყიენებთ მარა გამოსაყენებელია ხეხილში ვამოწმებთ დუბლიკატები ხომ არ არის
+            var QarsafariXexilisShemowmebaResult = _windbreakMethods.QarsafariXexilisShemowmeba();
+            if (QarsafariXexilisShemowmebaResult.Success == false)
+            {
+                return new Result<bool>
+                {
+                    Success = false,
+                    StatusCode = System.Net.HttpStatusCode.BadGateway,
+                    Message = QarsafariXexilisShemowmebaResult.Message
+                };
+            }
 
 
 
