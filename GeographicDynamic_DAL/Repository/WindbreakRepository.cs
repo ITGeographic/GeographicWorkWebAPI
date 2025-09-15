@@ -810,17 +810,17 @@ namespace GeographicDynamic_DAL.Repository
 
             ////////////axali funqcia UIDREPLACE () {} // table qarsafarshi
             ////////////SET UID = str([ლიტერი ID]) + str([უნიკ ID]) // str chventan aris Convert.ToString()
-            ///////////// ჯერ არ ვიყიენებთ მარა გამოსაყენებელია ხეხილში ვამოწმებთ დუბლიკატები ხომ არ არის
-            var QarsafariXexilisShemowmebaResult = _windbreakMethods.QarsafariXexilisShemowmeba();
-            if (QarsafariXexilisShemowmebaResult.Success == false)
-            {
-                return new Result<bool>
-                {
-                    Success = false,
-                    StatusCode = System.Net.HttpStatusCode.BadGateway,
-                    Message = QarsafariXexilisShemowmebaResult.Message
-                };
-            }
+            ///////////////////// ჯერ არ ვიყიენებთ მარა გამოსაყენებელია ხეხილში ვამოწმებთ დუბლიკატები ხომ არ არის
+            ////////var QarsafariXexilisShemowmebaResult = _windbreakMethods.QarsafariXexilisShemowmeba();
+            ////////if (QarsafariXexilisShemowmebaResult.Success == false)
+            ////////{
+            ////////    return new Result<bool>
+            ////////    {
+            ////////        Success = false,
+            ////////        StatusCode = System.Net.HttpStatusCode.BadGateway,
+            ////////        Message = QarsafariXexilisShemowmebaResult.Message
+            ////////    };
+            ////////}
 
 
 
