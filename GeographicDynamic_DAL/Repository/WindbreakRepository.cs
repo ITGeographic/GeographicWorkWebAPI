@@ -614,7 +614,7 @@ namespace GeographicDynamic_DAL.Repository
                 {
                     Success = false,
                     StatusCode = System.Net.HttpStatusCode.BadGateway,
-                    Message = "მოხდა შეცდომა ექსელის წაკითხვის დროს" + exceliswakitxvarestult.Message
+                    Message = "მოხდა შეცდომა ექსელის წაკითხვის დროს" + ExcelisWakitxvaRestult.Message
                 };
             }
 
