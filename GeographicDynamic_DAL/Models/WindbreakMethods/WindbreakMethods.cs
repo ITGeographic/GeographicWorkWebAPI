@@ -345,8 +345,6 @@ namespace GeographicDynamic_DAL.Models.WindbreakMethods
 
 
                 #endregion
-
-
                 #region gio
                 //List<double?> distinctUniqIds = geographicDynamicDbContext.Qarsafaris.OrderBy(m => m.UniqId).Select(q => q.UniqId).Distinct().ToList();
                 //List<double?> AccessList = geographicDynamicDbContext.WindbreakMdbs.OrderBy(m => m.UniqId).Select(q => q.UniqId).Distinct().ToList();
@@ -378,12 +376,8 @@ namespace GeographicDynamic_DAL.Models.WindbreakMethods
                 //    Message = "წარნატებით დასრულდა შემოწმება Access და Excel UniqId-ის "
                 //};
                 #endregion
-
-
                 List<Qarsafari> qarsafaris = geographicDynamicDbContext.Qarsafaris.Where(m => m.IsUniqLiterNull == "true").Select(x => new Qarsafari { UniqId = x.UniqId, LiterId = x.LiterId }).ToList();
-
                 var duplicates = qarsafaris.GroupBy(q => new { q.UniqId, q.LiterId }).Where(g => g.Count() > 1).SelectMany(g => g);
-
                 if (duplicates.Any())
                 {
                     //Console.WriteLine("Duplicates found:");
@@ -399,9 +393,7 @@ namespace GeographicDynamic_DAL.Models.WindbreakMethods
                         Message = "მოხდა შეცდომა ! Excel UniqId  !: " + uniqIdsNotInAccessList
                     };
                 }
-
                 List<WindbreakMdb> windbreakMdbs = geographicDynamicDbContext.WindbreakMdbs.Select(x => new WindbreakMdb { UniqId = x.UniqId, LiterId = x.LiterId }).ToList();
-
                 var duplicatesMDB = qarsafaris.GroupBy(q => new { q.UniqId, q.LiterId }).Where(g => g.Count() > 1).SelectMany(g => g);
 
                 if (!duplicates.Any())
@@ -462,13 +454,6 @@ namespace GeographicDynamic_DAL.Models.WindbreakMethods
                             Message = "მოხდა შეცდომა ! Excel და Access რაოდენობა არ ემთხვევა!"
                         };
                     }
-
-
-
-
-
-
-
                     return new Result<string?>
                     {
                         Success = true,
@@ -1553,8 +1538,11 @@ namespace GeographicDynamic_DAL.Models.WindbreakMethods
                     foreach (var item in GeographicDynamicDbContext.QarsafariGroupeds)
                     {
                         // Find corresponding row in Access table
-                        System.Data.DataRow[] rows = dataTable.Select($"{uniqid} = '{item.UniqIdOld}' AND {literid} = {item.LiterId}");
-
+                        System.Data.DataRow[] rows = dataTable.Select($"{uniqid} = {item.UniqIdOld} AND {literid} = {item.LiterId}");
+                        if (rows.Length > 1)
+                        {
+                            var test = "test";
+                        }
                         if (rows.Length > 0)
                         {
 
@@ -1573,7 +1561,7 @@ namespace GeographicDynamic_DAL.Models.WindbreakMethods
                                 row["Field_Operator"] = item.FieldOperator;
                                 row["Date_"] = item.Date;
                                 row[newColumnName] = item.UniqId;
-                                row["UNIQ_ID"] = item.UniqId;
+                                //////////row["UNIQ_ID"] = item.UniqId;
                                 row["UNIQ_ID_OLD"] = item.UniqIdOld;
                             }
                             //rows[0]["Photo_N"] = item.PhotoN;
@@ -1592,12 +1580,42 @@ namespace GeographicDynamic_DAL.Models.WindbreakMethods
                             //rows[0]["UNIQ_ID"] = item.UniqId;
                             //rows[0]["UNIQ_ID_OLD"] = item.UniqIdOld;
                         }
-                    }
 
+                    }
                     // Update Access table with modified DataTable
                     System.Data.OleDb.OleDbCommandBuilder builder = new System.Data.OleDb.OleDbCommandBuilder(adapter);
                     adapter.UpdateCommand = builder.GetUpdateCommand();
                     adapter.Update(dataTable);
+
+                    connection.Close();
+                }
+
+                // Second: reopen connection for shifting columns
+                using (OleDbConnection connection = new OleDbConnection(connectionString))
+                {
+                    connection.Open();
+
+                    // Step 1: check for NULLs in Uniq_ID_NEW_Gadanomrili
+                    string nullCheckQuery = $@"SELECT COUNT(*) FROM [{AccessSheetName}] WHERE Uniq_ID_NEW_Gadanomrili IS NULL";
+                    using (OleDbCommand nullCheckCmd = new OleDbCommand(nullCheckQuery, connection))
+                    {
+                        int nullCount = (int)nullCheckCmd.ExecuteScalar();
+                        if (nullCount > 0)
+                        {
+                            throw new Exception($"Found {nullCount} rows where Uniq_ID_NEW_Gadanomrili is NULL. Update aborted.");
+                        }
+                    }
+
+                                    // Step 2: shift columns if safe
+                                    string updateShiftQuery = $@"
+                        UPDATE [{AccessSheetName}]
+                        SET 
+                            UNIQ_ID = Uniq_ID_NEW_Gadanomrili
+                    ";
+                    using (OleDbCommand updateShiftCmd = new OleDbCommand(updateShiftQuery, connection))
+                    {
+                        updateShiftCmd.ExecuteNonQuery();
+                    }
 
                     connection.Close();
                 }
