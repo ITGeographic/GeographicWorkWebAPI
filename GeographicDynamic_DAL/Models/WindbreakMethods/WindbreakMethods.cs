@@ -1771,7 +1771,7 @@ namespace GeographicDynamic_DAL.Models.WindbreakMethods
                     foreach (var item in GeographicDynamicDbContext.QarsafariGroupeds)
                     {
                         // Find corresponding row in Access table
-                        System.Data.DataRow[] rows = dataTable.Select($"{uniqid} = {item.UniqIdOld} AND {literid} = {item.LiterId}");
+                        System.Data.DataRow[] rows = dataTable.Select($"{uniqid} = {item.UniqId} AND {literid} = {item.LiterId}");
                         if (rows.Length > 1)
                         {
                             var test = "test";
@@ -1795,7 +1795,7 @@ namespace GeographicDynamic_DAL.Models.WindbreakMethods
                                 row["Date_"] = item.Date;
                                 row[newColumnName] = item.UniqId;
                                 //////////row["UNIQ_ID"] = item.UniqId;
-                                row["UNIQ_ID_OLD"] = item.UniqIdOld;
+                                row["UNIQ_ID_OLD"] = item.UniqId;
                             }
                             //rows[0]["Photo_N"] = item.PhotoN;
                             //rows[0]["shrubbery"] = item.Shrubbery;

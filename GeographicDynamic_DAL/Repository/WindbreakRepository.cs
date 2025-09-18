@@ -156,28 +156,31 @@ namespace GeographicDynamic_DAL.Repository
                             //MessageBox.Show("მოხდა შეცდომა ფოლდერში 3-ზე ნაკლები ფოტოს ფაილია აღმოჩენილი !");
                         }
                         // აქ ემატება შემოწმება იმისთვის რომ ინახოს თუ არის 10 ზე მეტი ფოტო ფილდერში და თუ კი მაშინ წაშალოს იმდენი რამდენითაც მეტია 10 ზე 
-                        // წასაშლელად ირჩევა შემთხვევითი პრინციპით რიცხვი მასივში და შენდეგ იშლება
-                        if (photoLength > 10)
-                        {
-                            Random random = new Random();
-                            int filesToDeleteCount = photoLength - 10; // Calculate the number of files to delete
 
-                            for (int i = 0; i < filesToDeleteCount; i++)
-                            {
-                                // Select a random file from the list
-                                int randomIndex = random.Next(files.Count);
-                                string fileToDelete = files[randomIndex];
 
-                                // Delete the file
-                                File.Delete(fileToDelete);
 
-                                // Remove the file from the list
-                                files.RemoveAt(randomIndex);
-                            }
+                        //// წასაშლელად ირჩევა შემთხვევითი პრინციპით რიცხვი მასივში და შენდეგ იშლება
+                        //if (photoLength > 10)
+                        //{
+                        //    Random random = new Random();
+                        //    int filesToDeleteCount = photoLength - 10; // Calculate the number of files to delete
 
-                            // Update photoLength after deletion
-                            photoLength = files.Count;
-                        }
+                        //    for (int i = 0; i < filesToDeleteCount; i++)
+                        //    {
+                        //        // Select a random file from the list
+                        //        int randomIndex = random.Next(files.Count);
+                        //        string fileToDelete = files[randomIndex];
+
+                        //        // Delete the file
+                        //        File.Delete(fileToDelete);
+
+                        //        // Remove the file from the list
+                        //        files.RemoveAt(randomIndex);
+                        //    }
+
+                        //    // Update photoLength after deletion
+                        //    photoLength = files.Count;
+                        //}
 
 
                     }
@@ -639,7 +642,7 @@ namespace GeographicDynamic_DAL.Repository
             }
 
             List<Qarsafari> newQarsafari = geographicDynamicDbContext.Qarsafaris.OrderBy(m => m.UniqId).ToList();
-            ////ვამოწმებთ Excel-ში თუ არის დუპლიკატი Unic-Liter - ID - ები
+            //ვამოწმებთ Excel-ში თუ არის დუპლიკატი Unic-Liter - ID - ები
             var ShemowmebaUnicLiterExcelshiResult = _windbreakMethods.ShemowmebaUnicLiterExcelshi();
             if (ShemowmebaUnicLiterExcelshiResult.Success == false)
             {
@@ -756,22 +759,22 @@ namespace GeographicDynamic_DAL.Repository
             }
 
             ////aq unda fotoebi renamephotos
-            //if (excelReadDTO.GadanomriliaFotoebi != true)
-            //{
-            //    RenamePhotoDTO renamePhotoDTOForRename = new RenamePhotoDTO();
-            //    renamePhotoDTOForRename.FolderPath = excelReadDTO.FolderPath;
-            //    renamePhotoDTOForRename.PhotoStartNumber = excelReadDTO.PhotoStartNumber;
-            //    var RenamePhotosInFolderFromExcel = RenamePhotosInFolder(renamePhotoDTOForRename);
-            //    if (RenamePhotosInFolderFromExcel.Success == false)
-            //    {
-            //        return new Result<bool>
-            //        {
-            //            Success = false,
-            //            StatusCode = System.Net.HttpStatusCode.BadGateway,
-            //            Message = RenamePhotosInFolderFromExcel.Message
-            //        };
-            //    }
-            //}
+            if (excelReadDTO.GadanomriliaFotoebi != true)
+            {
+                RenamePhotoDTO renamePhotoDTOForRename = new RenamePhotoDTO();
+                renamePhotoDTOForRename.FolderPath = excelReadDTO.FolderPath;
+                renamePhotoDTOForRename.PhotoStartNumber = excelReadDTO.PhotoStartNumber;
+                var RenamePhotosInFolderFromExcel = RenamePhotosInFolder(renamePhotoDTOForRename);
+                if (RenamePhotosInFolderFromExcel.Success == false)
+                {
+                    return new Result<bool>
+                    {
+                        Success = false,
+                        StatusCode = System.Net.HttpStatusCode.BadGateway,
+                        Message = RenamePhotosInFolderFromExcel.Message
+                    };
+                }
+            }
             //aq unda fotoebi renamephotos
 
             var ProcentisDatvlaResult = _windbreakMethods.QarsafariProcentisDatvla();
@@ -834,7 +837,7 @@ namespace GeographicDynamic_DAL.Repository
 
             ////////////axali funqcia UIDREPLACE () {} // table qarsafarshi
             ////////////SET UID = str([ლიტერი ID]) + str([უნიკ ID]) // str chventan aris Convert.ToString()
-            
+
 
 
             // qarsafari ცხრილის დაგრუპვა uniqid ის მიხედვით და გადატანა qarsafariGrouped ში
@@ -863,16 +866,16 @@ namespace GeographicDynamic_DAL.Repository
             }
 
 
-            //var GadanomriliFotoebiToQarsafariGroupedResult = _windbreakMethods.GadanomriliFotoebiToQarsafariGrouped();
-            //if (GadanomriliFotoebiToQarsafariGroupedResult.Success == false)
-            //{
-            //    return new Result<bool>
-            //    {
-            //        Success = false,
-            //        StatusCode = System.Net.HttpStatusCode.BadGateway,
-            //        Message = GadanomriliFotoebiToQarsafariGroupedResult.Message
-            //    };
-            //}
+            var GadanomriliFotoebiToQarsafariGroupedResult = _windbreakMethods.GadanomriliFotoebiToQarsafariGrouped();
+            if (GadanomriliFotoebiToQarsafariGroupedResult.Success == false)
+            {
+                return new Result<bool>
+                {
+                    Success = false,
+                    StatusCode = System.Net.HttpStatusCode.BadGateway,
+                    Message = GadanomriliFotoebiToQarsafariGroupedResult.Message
+                };
+            }
 
             #region ეს აღარ გვჭირდება რადგან არ მუშაობს 
             //var UPDTFromExcelToAccessResult = _windbreakMethods.UPDTFromExcelToAccess(excelReadDTO.AccessShitName);
@@ -887,16 +890,16 @@ namespace GeographicDynamic_DAL.Repository
             //}
             #endregion
 
-            //var UpdateFromQarsafariGroupedToAccessFileResult = _windbreakMethods.UpdateFromQarsafariGroupedToAccessFile(excelReadDTO.AccessShitName, excelReadDTO.AccessFilePath);
-            //if (UpdateFromQarsafariGroupedToAccessFileResult.Success == false)
-            //{
-            //    return new Result<bool>
-            //    {
-            //        Success = false,
-            //        StatusCode = System.Net.HttpStatusCode.BadGateway,
-            //        Message = UpdateFromQarsafariGroupedToAccessFileResult.Message
-            //    };
-            //}
+            var UpdateFromQarsafariGroupedToAccessFileResult = _windbreakMethods.UpdateFromQarsafariGroupedToAccessFile(excelReadDTO.AccessShitName, excelReadDTO.AccessFilePath);
+            if (UpdateFromQarsafariGroupedToAccessFileResult.Success == false)
+            {
+                return new Result<bool>
+                {
+                    Success = false,
+                    StatusCode = System.Net.HttpStatusCode.BadGateway,
+                    Message = UpdateFromQarsafariGroupedToAccessFileResult.Message
+                };
+            }
             /////////// ქარსაფარი გრუპდის ცხრილები რომ ამოექსპორტდეს 
             List<QarsafariGrouped> qarsafariGroupeds = geographicDynamicDbContext.QarsafariGroupeds.OrderBy(m => m.UniqId).ToList();
             /////////List<QarsafariGrouped> qarsafariGroupedsSaxelmwifo = geographicDynamicDbContext.QarsafariGroupeds.Where(x => x.Sakutreba == "სახელმწიფო" || x.Sakutreba == "მუნიციპალიტეტი").OrderBy(m => m.UniqId).ToList();
@@ -919,16 +922,16 @@ namespace GeographicDynamic_DAL.Repository
                 };
             }
             ///////////////ფუნქციის გამოძახებები
-            //var copyOriginalExcelResult = _windbreakMethods.copyOldExcelOriginal(excelReadDTO);
-            //if (copyOriginalExcelResult.Success == false)
-            //{
-            //    return new Result<bool>
-            //    {
-            //        Success = false,
-            //        StatusCode = System.Net.HttpStatusCode.BadGateway,
-            //        Message = copyOriginalExcelResult.Message,
-            //    };
-            //}
+            var copyOriginalExcelResult = _windbreakMethods.copyOldExcelOriginal(excelReadDTO);
+            if (copyOriginalExcelResult.Success == false)
+            {
+                return new Result<bool>
+                {
+                    Success = false,
+                    StatusCode = System.Net.HttpStatusCode.BadGateway,
+                    Message = copyOriginalExcelResult.Message,
+                };
+            }
 
             ///////aqedan da zeviT 
 
