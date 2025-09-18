@@ -377,6 +377,9 @@ namespace GeographicDynamic_DAL.Repository
             int photocount = renamePhotoDTO.PhotoStartNumber;
             var random = new Random();
             var tempFolderCount = random.Next(100000, 999999);
+
+
+            ///////////// ამ if statement ით გვერდს ვუვლით ფოლდერების გადანომვრას
             if (false)
             {
                 if (renamePhotoDTO.Gadanomrilia == false)
