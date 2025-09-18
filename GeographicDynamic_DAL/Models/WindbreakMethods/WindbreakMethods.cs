@@ -1767,27 +1767,53 @@ namespace GeographicDynamic_DAL.Models.WindbreakMethods
                     adapter.Fill(dataTable);
 
                     // Update PhotoN values in Access table
+                    // Update PhotoN values in Access table
                     foreach (var item in GeographicDynamicDbContext.QarsafariGroupeds)
                     {
                         // Find corresponding row in Access table
-                        System.Data.DataRow[] rows = dataTable.Select($"{uniqid} = '{item.UniqId}' AND {literid} = '{item.LiterId}'"); // თეთრიწყარო
-                        //System.Data.DataRow[] rows = dataTable.Select($"{uniqid} = '{item.UniqIdOld}' AND {literid} = '{item.LiterId}'");
+                        System.Data.DataRow[] rows = dataTable.Select($"{uniqid} = {item.UniqIdOld} AND {literid} = {item.LiterId}");
+                        if (rows.Length > 1)
+                        {
+                            var test = "test";
+                        }
                         if (rows.Length > 0)
                         {
-                            rows[0]["Photo_N"] = item.PhotoN;
-                            rows[0]["shrubbery"] = item.Shrubbery;
-                            rows[0]["Woody_plant_percent"] = item.WoodyPlantPercent;
-                            rows[0]["Woody_plant_quantity"] = item.WoodyPlantQuantity;
-                            rows[0]["woody_plant_species"] = item.WoodyPlantSpecies;
-                            rows[0]["In_good_condition"] = item.InGoodCondition;
-                            rows[0]["chopped_down"] = item.ChoppedDown;
-                            rows[0]["rampike"] = item.Rampike;
-                            rows[0]["species_medium_age"] = item.SpeciesMediumAge;
-                            rows[0]["Company"] = item.Company;
-                            rows[0]["Field_Operator"] = item.FieldOperator;
-                            rows[0]["Date_"] = item.Date;
-                            rows[0][newColumnName] = item.UniqId;
+
+                            foreach (var row in rows) // update all matches (in case there are more than one)
+                            {
+                                row["Photo_N"] = item.PhotoN;
+                                row["shrubbery"] = item.Shrubbery;
+                                row["Woody_plant_percent"] = item.WoodyPlantPercent;
+                                row["Woody_plant_quantity"] = item.WoodyPlantQuantity;
+                                row["woody_plant_species"] = item.WoodyPlantSpecies;
+                                row["In_good_condition"] = item.InGoodCondition;
+                                row["chopped_down"] = item.ChoppedDown;
+                                row["rampike"] = item.Rampike;
+                                row["species_medium_age"] = item.SpeciesMediumAge;
+                                row["Company"] = item.Company;
+                                row["Field_Operator"] = item.FieldOperator;
+                                row["Date_"] = item.Date;
+                                row[newColumnName] = item.UniqId;
+                                //////////row["UNIQ_ID"] = item.UniqId;
+                                row["UNIQ_ID_OLD"] = item.UniqIdOld;
+                            }
+                            //rows[0]["Photo_N"] = item.PhotoN;
+                            //rows[0]["shrubbery"] = item.Shrubbery;
+                            //rows[0]["Woody_plant_percent"] = item.WoodyPlantPercent;
+                            //rows[0]["Woody_plant_quantity"] = item.WoodyPlantQuantity;
+                            //rows[0]["woody_plant_species"] = item.WoodyPlantSpecies;
+                            //rows[0]["In_good_condition"] = item.InGoodCondition;
+                            //rows[0]["chopped_down"] = item.ChoppedDown;
+                            //rows[0]["rampike"] = item.Rampike;
+                            //rows[0]["species_medium_age"] = item.SpeciesMediumAge;
+                            //rows[0]["Company"] = item.Company;
+                            //rows[0]["Field_Operator"] = item.FieldOperator;
+                            //rows[0]["Date_"] = item.Date;
+                            //rows[0][newColumnName] = item.UniqId;
+                            //rows[0]["UNIQ_ID"] = item.UniqId;
+                            //rows[0]["UNIQ_ID_OLD"] = item.UniqIdOld;
                         }
+
                     }
 
                     // Update Access table with modified DataTable
@@ -1797,6 +1823,39 @@ namespace GeographicDynamic_DAL.Models.WindbreakMethods
 
                     connection.Close();
                 }
+
+
+
+                // Second: reopen connection for shifting columns
+                using (OleDbConnection connection = new OleDbConnection(connectionString))
+                {
+                    connection.Open();
+
+                    // Step 1: check for NULLs in Uniq_ID_NEW_Gadanomrili
+                    string nullCheckQuery = $@"SELECT COUNT(*) FROM [{AccessSheetName}] WHERE Uniq_ID_NEW_Gadanomrili IS NULL";
+                    using (OleDbCommand nullCheckCmd = new OleDbCommand(nullCheckQuery, connection))
+                    {
+                        int nullCount = (int)nullCheckCmd.ExecuteScalar();
+                        if (nullCount > 0)
+                        {
+                            throw new Exception($"Found {nullCount} rows where Uniq_ID_NEW_Gadanomrili is NULL. Update aborted.");
+                        }
+                    }
+
+                    // Step 2: shift columns if safe
+                    string updateShiftQuery = $@"
+                        UPDATE [{AccessSheetName}]
+                        SET 
+                            UNIQ_ID = Uniq_ID_NEW_Gadanomrili
+                    ";
+                    using (OleDbCommand updateShiftCmd = new OleDbCommand(updateShiftQuery, connection))
+                    {
+                        updateShiftCmd.ExecuteNonQuery();
+                    }
+
+                    connection.Close();
+                }
+
 
 
                 return new Result<bool>
