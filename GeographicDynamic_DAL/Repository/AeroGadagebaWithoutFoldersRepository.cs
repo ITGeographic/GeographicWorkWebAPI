@@ -20,8 +20,8 @@ namespace GeographicDynamic_DAL.Repository
 
             try
             {
-                string ExcelPath = @"D:\Projects\2025\QarsaffariDatvlebi\TestAero\GPS_pnt_time.xlsx";
-                string ImagePath = @"D:\Projects\2025\QarsaffariDatvlebi\TestAero\images";
+                string ExcelPath = @"\\giswebserver\HotSpo - -Pictures\2025_09_23\AleksTest\\GPS_pnt_time.xlsx";
+                string ImagePath = @"\\giswebserver\HotSpo - -Pictures\2025_09_23\AleksTest\images";
 
                 // Read Excel
                 using (var workbook = new XLWorkbook(ExcelPath))

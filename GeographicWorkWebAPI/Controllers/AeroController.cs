@@ -2,6 +2,7 @@
 using GeographicDynamic_DAL.Interface;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using GeographicDynamic_DAL.Repository;
 
 namespace GeographicWorkWebAPI.Controllers
 {
@@ -11,12 +12,15 @@ namespace GeographicWorkWebAPI.Controllers
         private readonly IAero _aero;
         private readonly IAeroWithObjectId _aeroWithObjectId;
         private readonly IAeroWithoutFolders _aeroWithoutFolders;
+        private readonly IAeroImagesFolderingRepository _aeroImagesFoldering;
 
-        public AeroController(IAero aero,IAeroWithObjectId aeroWithObjectId, IAeroWithoutFolders aeroWithoutFolders) 
+
+        public AeroController(IAero aero,IAeroWithObjectId aeroWithObjectId, IAeroWithoutFolders aeroWithoutFolders, IAeroImagesFolderingRepository aeroImagesFolderingRepository) 
         {
             _aero = aero;
             _aeroWithObjectId = aeroWithObjectId;
             _aeroWithoutFolders = aeroWithoutFolders;
+            _aeroImagesFoldering = aeroImagesFolderingRepository;
         }
 
         [HttpPost("AeroGadageba")]
@@ -40,5 +44,18 @@ namespace GeographicWorkWebAPI.Controllers
             if (result.Success) return Ok(result);
             return BadRequest(result);
         }
+
+        [HttpPost("AeroGadagebisDafoldereba")]
+        public IActionResult AeroImagesFolderingRepository()
+        {
+            // Call your repository instead of calling itself
+            var result = _aeroImagesFoldering.DafolderebaPotoebis();
+
+            if (result.Success)
+                return Ok(result);
+
+            return BadRequest(result);
+        }
     }
+
 }

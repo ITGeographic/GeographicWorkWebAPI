@@ -11,5 +11,6 @@ namespace GeographicDynamic_DAL.Interface
     public interface IAeroWithoutFolders
     {
         Result<List<AeroRecordWithoutFolders>> ExcelisWakiTxvaAeroWithoutFolders();
+
     }
 }
