@@ -2596,7 +2596,7 @@ namespace GeographicDynamic_DAL.Models.WindbreakMethods
                         if (true)
                         {
                             worksheet.Cells[i, column + 1].Value = excelDataList.FirstOrDefault(m => m.Uniq_ID_gadanomrili == matchedData.UniqId.ToString()).Uniq_Id_MDB;
-
+                            workbook.Save();
                         }
                     }
                     
@@ -2604,9 +2604,21 @@ namespace GeographicDynamic_DAL.Models.WindbreakMethods
 
                 // Save changes and cleanup
                 workbook.Save();
-                workbook.Close();
+                workbook.Close(false);
                 excelApp.Quit();
                 Marshal.ReleaseComObject(excelApp);
+
+                // Cleanup COM objects
+                System.Runtime.InteropServices.Marshal.ReleaseComObject(worksheet);
+                System.Runtime.InteropServices.Marshal.ReleaseComObject(workbook);
+                System.Runtime.InteropServices.Marshal.ReleaseComObject(excelApp);
+
+                worksheet = null;
+                workbook = null;
+                excelApp = null;
+
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
 
                 result.Success = true;
                 result.StatusCode = System.Net.HttpStatusCode.OK;

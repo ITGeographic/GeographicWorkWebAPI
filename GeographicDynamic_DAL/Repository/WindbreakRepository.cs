@@ -672,19 +672,19 @@ namespace GeographicDynamic_DAL.Repository
                 }
             }
 
-            ///////////////////ეს ფუქნცია ამოწმებს excel და access ცხრილებს და ადარებს UNIQID ებს თუ ემთხვევა ერთმანეთს
-            //var ShemowmebaAccessExcelUnicLiterDublicatsResult = _windbreakMethods.ShemowmebaAccessExcelUnicLiterDublicats(excelReadDTO.FolderPath);
-            //if (ShemowmebaAccessExcelUnicLiterDublicatsResult.Success == false)
-            //{
+            /////////////////////ეს ფუქნცია ამოწმებს excel და access ცხრილებს და ადარებს UNIQID ებს თუ ემთხვევა ერთმანეთს
+            var ShemowmebaAccessExcelUnicLiterDublicatsResult = _windbreakMethods.ShemowmebaAccessExcelUnicLiterDublicats(excelReadDTO.FolderPath);
+            if (ShemowmebaAccessExcelUnicLiterDublicatsResult.Success == false)
+            {
 
-            //    string mismatches = string.Join(", ", ShemowmebaAccessExcelUnicLiterDublicatsResult.Data);
-            //    return new Result<bool>
-            //    {
-            //        Success = false,
-            //        StatusCode = System.Net.HttpStatusCode.BadGateway,
-            //        Message = ShemowmebaAccessExcelUnicLiterDublicatsResult.Message + " ზედმეტია: " + mismatches
-            //    };
-            //}
+                string mismatches = string.Join(", ", ShemowmebaAccessExcelUnicLiterDublicatsResult.Data);
+                return new Result<bool>
+                {
+                    Success = false,
+                    StatusCode = System.Net.HttpStatusCode.BadGateway,
+                    Message = ShemowmebaAccessExcelUnicLiterDublicatsResult.Message + " ზედმეტია: " + mismatches
+                };
+            }
             //var ShemowmebaAccessExcelUnicLiterDublicatsResult = _windbreakMethods.ShemowmebaAccessExcelUnicLiterDublicats(excelReadDTO.FolderPath);
 
             //if (!ShemowmebaAccessExcelUnicLiterDublicatsResult.Success)
@@ -800,28 +800,28 @@ namespace GeographicDynamic_DAL.Repository
                 };
             }
 
-            // შევსება ველების სადაც ვინახავთ რომელი მუნიციპალიტეტია და რომელი ეტაპია დათვლის 
-            var FillProjectEtapiIDSResult = _windbreakMethods.FillProjectEtapiIDS(excelReadDTO.ProjectNameID, excelReadDTO.EtapiID);
-            if (FillProjectEtapiIDSResult.Success = false)
-            {
-                return new Result<bool>
-                {
-                    Success = false,
-                    StatusCode = System.Net.HttpStatusCode.BadGateway,
-                    Message = "მოხდა შეცდომა პროექტის სახელის და ეტაპის მინიჭების დროს "
-                };
-            }
-            //საკუთრებაში ვწერთ სახელმწიფოა თუ კერძო
-            var FillSakutrebaIsKerdzoOrSaxelmwifoResult = FillSakutrebaIsKerdzoOrSaxelmwifo();
-            if (FillSakutrebaIsKerdzoOrSaxelmwifoResult.Success == false)
-            {
-                return new Result<bool>
-                {
-                    Success = false,
-                    StatusCode = System.Net.HttpStatusCode.BadGateway,
-                    Message = "მოხდა შეცდომა საკუთრების მინიჭების დროს "
-                };
-            }
+            //// შევსება ველების სადაც ვინახავთ რომელი მუნიციპალიტეტია და რომელი ეტაპია დათვლის 
+            //var FillProjectEtapiIDSResult = _windbreakMethods.FillProjectEtapiIDS(excelReadDTO.ProjectNameID, excelReadDTO.EtapiID);
+            //if (FillProjectEtapiIDSResult.Success = false)
+            //{
+            //    return new Result<bool>
+            //    {
+            //        Success = false,
+            //        StatusCode = System.Net.HttpStatusCode.BadGateway,
+            //        Message = "მოხდა შეცდომა პროექტის სახელის და ეტაპის მინიჭების დროს "
+            //    };
+            //}
+            ////საკუთრებაში ვწერთ სახელმწიფოა თუ კერძო
+            //var FillSakutrebaIsKerdzoOrSaxelmwifoResult = FillSakutrebaIsKerdzoOrSaxelmwifo();
+            //if (FillSakutrebaIsKerdzoOrSaxelmwifoResult.Success == false)
+            //{
+            //    return new Result<bool>
+            //    {
+            //        Success = false,
+            //        StatusCode = System.Net.HttpStatusCode.BadGateway,
+            //        Message = "მოხდა შეცდომა საკუთრების მინიჭების დროს "
+            //    };
+            //}
 
             var UIDReplaceAccessResult = _windbreakMethods.UIDReplaceAccess();
             if (UIDReplaceAccessResult.Success == false)
