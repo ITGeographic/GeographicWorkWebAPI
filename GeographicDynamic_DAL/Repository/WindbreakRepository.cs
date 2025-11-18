@@ -1,28 +1,16 @@
-﻿using Azure;
-using GeographicDynamic_DAL.DTOs.Windbreak;
+﻿using GeographicDynamic_DAL.DTOs.Windbreak;
 using GeographicDynamic_DAL.Interface;
 using GeographicDynamic_DAL.Models;
 using GeographicDynamicWebAPI.Wrappers;
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
-using Microsoft.EntityFrameworkCore.Query.Internal;
 using Microsoft.Office.Interop.Excel;
-using System;
-using System.Collections.Generic;
 using System.Data;
-using System.Data.OleDb;
-using System.Diagnostics;
 using System.Globalization;
-using System.Linq;
-using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Threading.Tasks;
-using static Azure.Core.HttpHeader;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 using GeographicDynamic_DAL.Models.WindbreakMethods;
 //using static System.Net.Mime.MediaTypeNames;
+using ClosedXML.Excel;
 using System.Drawing;
 using System.Drawing.Imaging;
 namespace GeographicDynamic_DAL.Repository
@@ -30,7 +18,7 @@ namespace GeographicDynamic_DAL.Repository
     public class WindbreakRepository : IWindbreak
     {
         WindbreakMethods _windbreakMethods = new WindbreakMethods();
-        
+
         public Result<bool> GetCheckPhotoDate(string folderPath, string resultPath)
         {
             var testdb = "";
@@ -156,31 +144,28 @@ namespace GeographicDynamic_DAL.Repository
                             //MessageBox.Show("მოხდა შეცდომა ფოლდერში 3-ზე ნაკლები ფოტოს ფაილია აღმოჩენილი !");
                         }
                         // აქ ემატება შემოწმება იმისთვის რომ ინახოს თუ არის 10 ზე მეტი ფოტო ფილდერში და თუ კი მაშინ წაშალოს იმდენი რამდენითაც მეტია 10 ზე 
+                        // წასაშლელად ირჩევა შემთხვევითი პრინციპით რიცხვი მასივში და შენდეგ იშლება
+                        if (photoLength > 10)
+                        {
+                            Random random = new Random();
+                            int filesToDeleteCount = photoLength - 10; // Calculate the number of files to delete
 
+                            for (int i = 0; i < filesToDeleteCount; i++)
+                            {
+                                // Select a random file from the list
+                                int randomIndex = random.Next(files.Count);
+                                string fileToDelete = files[randomIndex];
 
+                                // Delete the file
+                                File.Delete(fileToDelete);
 
-                        //// წასაშლელად ირჩევა შემთხვევითი პრინციპით რიცხვი მასივში და შენდეგ იშლება
-                        //if (photoLength > 10)
-                        //{
-                        //    Random random = new Random();
-                        //    int filesToDeleteCount = photoLength - 10; // Calculate the number of files to delete
+                                // Remove the file from the list
+                                files.RemoveAt(randomIndex);
+                            }
 
-                        //    for (int i = 0; i < filesToDeleteCount; i++)
-                        //    {
-                        //        // Select a random file from the list
-                        //        int randomIndex = random.Next(files.Count);
-                        //        string fileToDelete = files[randomIndex];
-
-                        //        // Delete the file
-                        //        File.Delete(fileToDelete);
-
-                        //        // Remove the file from the list
-                        //        files.RemoveAt(randomIndex);
-                        //    }
-
-                        //    // Update photoLength after deletion
-                        //    photoLength = files.Count;
-                        //}
+                            // Update photoLength after deletion
+                            photoLength = files.Count;
+                        }
 
 
                     }
@@ -190,51 +175,34 @@ namespace GeographicDynamic_DAL.Repository
 
                 void WriteToExcel(List<string> UnMatchedPhotos, string ForExcelName)
                 {
-                    Microsoft.Office.Interop.Excel.Application ExcelApp = new Microsoft.Office.Interop.Excel.Application();
-                    Workbook ExcelWorkBook = null;
-                    Worksheet ExcelWorkSheet = null;
-
-                    // Set Excel application to not be visible
-                    ExcelApp.Visible = true;
-
-
-                    ExcelWorkBook = ExcelApp.Workbooks.Add(XlWBATemplate.xlWBATWorksheet);
-
-                    ExcelWorkBook.Worksheets.Add(); //Adding New Sheet in Excel Workbook
-
                     try
                     {
-                        ExcelWorkSheet = ExcelWorkBook.Worksheets[1]; // Compulsory Line in which sheet you want to write data
-                                                                      //Writing data into excel of 100 rows with 10 column 
-                        ExcelWorkSheet.Cells[1, "A"] = "შეცდომები";
-                        //ExcelWorkSheet.Cells[1, "B"] = "UNIQ_ID";
-                        for (int r = 0; r < UnMatchedPhotos.Count(); r++) //r stands for ExcelRow and c for ExcelColumn
+                        using (var workbook = new XLWorkbook())
                         {
-                            string[] parts = UnMatchedPhotos[r].Split('/');
-                            ExcelWorkSheet.Cells[r + 2, "A"] = string.Concat(parts);
-                            //ExcelWorkSheet.Cells[r + 2, "B"] = parts[1];
+                            var worksheet = workbook.Worksheets.Add("ResultSheet");
 
+                            // Write header
+                            worksheet.Cell(1, "A").Value = "შეცდომები";
+
+                            // Write data starting from row 2
+                            for (int r = 0; r < UnMatchedPhotos.Count(); r++)
+                            {
+                                string[] parts = UnMatchedPhotos[r].Split('/');
+                                worksheet.Cell(r + 2, "A").Value = string.Concat(parts);
+                            }
+
+                            // Auto-fit column width
+                            worksheet.Column("A").AdjustToContents();
+
+                            // Save the workbook
+                            string filePath = Path.Combine(resultPath, $"Results-{ForExcelName}.xlsx");
+                            workbook.SaveAs(filePath);
                         }
-                        ExcelWorkBook.Worksheets[1].Name = "ResultSheet";//Renaming the Sheet1 to MySheet
-                        ExcelWorkBook.SaveAs(resultPath + "\\Results-" + ForExcelName + ".xlsx");
-                        // ExcelWorkBook.Close();
-                        // ExcelApp.Quit();
-                        Marshal.ReleaseComObject(ExcelWorkSheet);
-                        Marshal.ReleaseComObject(ExcelWorkBook);
-                        Marshal.ReleaseComObject(ExcelApp);
-
-                        //Process.Start(resultPath + "\\Results-" + ForExcelName + ".xlsx");
-                        //Process.Start(new ProcessStartInfo { FileName = @"${resultPath}\\Results-{ForExcelName}.xlsx", UseShellExecute = true });
                     }
-
                     catch (Exception exHandle)
-
                     {
-
                         Console.WriteLine("Exception: " + exHandle.Message);
-
                         Console.ReadLine();
-
                     }
                 }
                 return new Result<bool>
