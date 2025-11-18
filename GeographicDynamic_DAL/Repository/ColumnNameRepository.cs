@@ -7,19 +7,17 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.Query.Internal;
-using Microsoft.Office.Interop.Excel;
+using ClosedXML.Excel;
 using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.OleDb;
 using System.Globalization;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using static Azure.Core.HttpHeader;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
-using Excel = Microsoft.Office.Interop.Excel;
 using System.Data.SqlClient;
 
 
@@ -40,27 +38,27 @@ namespace GeographicDynamic_DAL.Repository
 
             #region  gio 
 
-            Application xlApp = new Application();
-
             GeographicDynamicDbContext conn = new GeographicDynamicDbContext();
-            Excel.Workbook xlWorkbook = xlApp.Workbooks.Open(ExcelPath);
-            Excel._Worksheet xlWorksheet = (Excel._Worksheet)xlWorkbook.Sheets[1];
-            Excel.Range xlRange = xlWorksheet.UsedRange;
-            Excel.Range firstRow = xlWorksheet.Rows[1];
-
-
+            
             List<string> columnNames = new List<string>();
 
-            // Count the number of columns in the first row
-            int columnCount = 50;
-            int col;
-            // Loop through each column in the first row and add the column name to the list
-            for (col = 1; col <= columnCount; col++)
+            using (var workbook = new XLWorkbook(ExcelPath))
             {
-                string columnName = Convert.ToString((firstRow.Cells[1, col] as Excel.Range).Value);
-                if (!string.IsNullOrEmpty(columnName))
+                var worksheet = workbook.Worksheet(1);
+                var firstRow = worksheet.FirstRow();
+
+                // Count the number of columns in the first row
+                int columnCount = 50;
+                int col;
+                // Loop through each column in the first row and add the column name to the list
+                for (col = 1; col <= columnCount; col++)
                 {
-                    columnNames.Add(columnName);
+                    var cell = worksheet.Cell(1, col);
+                    string columnName = cell.GetString();
+                    if (!string.IsNullOrEmpty(columnName))
+                    {
+                        columnNames.Add(columnName);
+                    }
                 }
             }
 
