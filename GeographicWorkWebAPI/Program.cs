@@ -1,4 +1,4 @@
-using BotReestriClassLibrary.Interface;
+﻿using BotReestriClassLibrary.Interface;
 using BotReestriClassLibrary.Repository;
 using GeographicDynamic_DAL.Configurations;
 using GeographicDynamic_DAL.DTOs.Windbreak;
@@ -45,16 +45,22 @@ builder.Services.AddTransient<IChromeBot, ChromeBotRepository>();
 builder.Services.AddAutoMapper(typeof(MapperConfig));
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
+//// Configure the HTTP request pipeline.
+//if (app.Environment.IsDevelopment())
+//{
+//    app.UseSwagger();
+//    app.UseSwaggerUI();
 
-}
+//}
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "GeographicWorkWebAPI");
+    c.RoutePrefix = "swagger"; // ან "" რომ UI პირდაპირ root-ზე იყოს
+});
 app.UseCors(MyAllowSpecificOrigins);
 
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 
 app.UseAuthorization();
 
