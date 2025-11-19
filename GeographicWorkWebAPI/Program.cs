@@ -11,47 +11,58 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Services
-builder.Services.AddDbContext<GeographicDynamicDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("Geographic_Dynamic_Connection")));
-builder.Services.AddControllers(options =>
-{
-    options.Filters.Add(new Microsoft.AspNetCore.Mvc.Authorization.AllowAnonymousFilter());
-});
+var MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
+// Add services to the container.
+
+builder.Services.AddDbContext<GeographicDynamicDbContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("Geographic_Dynamic_Connection")));
+//var configuration = new ConfigurationBuilder()
+//    .SetBasePath(builder.Environment.ContentRootPath)
+//    .AddJsonFile("appsettings.json")
+//    .Build(); // Initialize the configuration object
+
+
+
+builder.Services.AddControllers();
+// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("_myAllowSpecificOrigins",
-        policy => policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
+    options.AddPolicy(name: MyAllowSpecificOrigins,
+        policy =>
+        {
+            policy.AllowAnyOrigin()
+                .AllowAnyHeader()
+                .AllowAnyMethod();
+        });
 });
 builder.Services.AddTransient<DictionaryDTO>();
 builder.Services.AddTransient<IVarjisFarti, VarjisFartiRepository>();
-builder.Services.AddTransient<IAero, AeroGadagebaRepository>();
-builder.Services.AddTransient<IAeroWithObjectId, AeroGadagebaWithObjectIdRepository>();
-builder.Services.AddTransient<IAeroWithoutFolders, AeroGadagebaWithoutFoldersRepository>();
 builder.Services.AddTransient<IWindbreak, WindbreakRepository>();
 builder.Services.AddTransient<IColumnName, ColumnNameRepository>();
 builder.Services.AddTransient<IChromeBot, ChromeBotRepository>();
 builder.Services.AddAutoMapper(typeof(MapperConfig));
-
 var app = builder.Build();
 
-// Base path (subfolder)
-app.UsePathBase("/GeographicWorkBack");
+//// Configure the HTTP request pipeline.
+//if (app.Environment.IsDevelopment())
+//{
+//    app.UseSwagger();
+//    app.UseSwaggerUI();
 
-// Middleware
-app.UseCors("_myAllowSpecificOrigins");
-//app.UseHttpsRedirection();
-app.UseAuthorization();
-
-// Swagger (ყველა environment-ში)
+//}
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
-    c.SwaggerEndpoint("/GeographicWorkBack/swagger/v1/swagger.json", "My API V1");
-    c.RoutePrefix = "swagger";
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "GeographicWorkWebAPI");
+    c.RoutePrefix = "swagger"; // ან "" რომ UI პირდაპირ root-ზე იყოს
 });
+app.UseCors(MyAllowSpecificOrigins);
+
+//app.UseHttpsRedirection();
+
+app.UseAuthorization();
 
 app.MapControllers();
 
