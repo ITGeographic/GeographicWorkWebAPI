@@ -1,11 +1,10 @@
 ﻿using GeographicDynamicWebAPI.Wrappers;
 using System;
 using System.Collections.Generic;
-using Microsoft.Office.Interop.Excel;
+using ClosedXML.Excel;
 using GeographicDynamic_DAL.Interface;
 using System.IO;
 using System.Drawing;
-using System.Runtime.InteropServices;
 using Font = System.Drawing.Font;
 using System.Drawing.Imaging;
 using System.Runtime.Serialization;
@@ -21,44 +20,43 @@ namespace GeographicDynamic_DAL.Repository
         public Result<List<AeroRecordWithObjectId>> ExcelisWakiTxvaAeroWithObjectId()
         {
             List<AeroRecordWithObjectId> ExcelInfo = new List<AeroRecordWithObjectId>();
-            Microsoft.Office.Interop.Excel.Application xlApp = new Microsoft.Office.Interop.Excel.Application();
-            Workbook xlWorkbook = null;
-            _Worksheet xlWorksheet = null;
-            Microsoft.Office.Interop.Excel.Range xlRange = null;
 
             try
             {
                 string ExcelPath = @"D:\Projects\2025\QarsaffariDatvlebi\TestAero\aero.xlsx";
-                xlWorkbook = xlApp.Workbooks.Open(ExcelPath);
-                xlWorksheet = (_Worksheet)xlWorkbook.Sheets[1];
-                xlRange = xlWorksheet.UsedRange;
-
-                int rowCount = xlRange.Rows.Count;
-
-                for (int i = 2; i <= rowCount; i++) // assuming first row is headers
+                
+                using (var workbook = new XLWorkbook(ExcelPath))
                 {
-                    var objectID = xlRange.Cells[i, 1]?.Value2?.ToString();
-                    var cellDate = xlRange.Cells[i, 2]?.Value2;
-                    DateTime? dataTaken = null;
+                    var worksheet = workbook.Worksheet(1);
+                    var rows = worksheet.RowsUsed().Skip(1); // skip header row
 
-                    if (cellDate != null)
+                    foreach (var row in rows)
                     {
-                        if (cellDate is double d)
-                            dataTaken = DateTime.FromOADate(d);
-                        else if (cellDate is string s && DateTime.TryParse(s, out var parsed))
-                            dataTaken = parsed;
+                        var objectID = row.Cell(1).GetValue<string>();
+                        var cellDate = row.Cell(2).GetValue<object>();
+                        DateTime? dataTaken = null;
+
+                        if (cellDate != null)
+                        {
+                            if (cellDate is double d)
+                                dataTaken = DateTime.FromOADate(d);
+                            else if (cellDate is DateTime dt)
+                                dataTaken = dt;
+                            else if (cellDate is string s && DateTime.TryParse(s, out var parsed))
+                                dataTaken = parsed;
+                        }
+
+                        var xValue = row.Cell(3).GetValue<string>();
+                        var yValue = row.Cell(4).GetValue<string>();
+
+                        ExcelInfo.Add(new AeroRecordWithObjectId
+                        {
+                            ObjectID = objectID,
+                            DataTaken = dataTaken,
+                            X = xValue,
+                            Y = yValue
+                        });
                     }
-
-                    var xValue = xlRange.Cells[i, 3]?.Value2?.ToString();
-                    var yValue = xlRange.Cells[i, 4]?.Value2?.ToString();
-
-                    ExcelInfo.Add(new AeroRecordWithObjectId
-                    {
-                        ObjectID = objectID,
-                        DataTaken = dataTaken,
-                        X = xValue,
-                        Y = yValue
-                    });
                 }
 
                 // ===== Organize images & write coordinates =====
@@ -78,18 +76,6 @@ namespace GeographicDynamic_DAL.Repository
                     StatusCode = System.Net.HttpStatusCode.BadGateway,
                     Message = "ექსელის წაკითხვა ვერ მოხერხდა: " + ex.Message
                 };
-            }
-            finally
-            {
-                if (xlRange != null) Marshal.FinalReleaseComObject(xlRange);
-                if (xlWorksheet != null) Marshal.FinalReleaseComObject(xlWorksheet);
-                if (xlWorkbook != null)
-                {
-                    xlWorkbook.Close(false);
-                    Marshal.FinalReleaseComObject(xlWorkbook);
-                }
-                xlApp.Quit();
-                Marshal.FinalReleaseComObject(xlApp);
             }
         }
 

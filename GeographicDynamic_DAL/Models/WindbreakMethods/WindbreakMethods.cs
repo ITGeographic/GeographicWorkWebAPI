@@ -2,7 +2,7 @@
 using GeographicDynamicWebAPI.Wrappers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using Microsoft.Office.Interop.Excel;
+using ClosedXML.Excel;
 using Microsoft.VisualBasic;
 using System;
 using System.Collections;
@@ -75,166 +75,106 @@ namespace GeographicDynamic_DAL.Models.WindbreakMethods
             var ExcelPath = excelReadDTO.ExcelPath;
             var test3 = excelReadDTO.AccessFilePath;
             var municipality = excelReadDTO.ProjectNameID;
-            Application xlApp = new Application();
+            
             try
             {
-                Microsoft.Office.Interop.Excel.Workbook xlWorkbook = xlApp.Workbooks.Open(ExcelPath);
-                //Microsoft.Office.Interop.Excel._Worksheet xlWorksheet = xlWorkbook.Sheets[1 ];
-                Microsoft.Office.Interop.Excel._Worksheet xlWorksheet = (Microsoft.Office.Interop.Excel._Worksheet)xlWorkbook.Sheets[1];
-                Microsoft.Office.Interop.Excel.Range xlRange = xlWorksheet.UsedRange;
-                //label2.Visible = true;
-                Microsoft.Office.Interop.Excel.Range lastCell = xlWorksheet.Cells.SpecialCells(Microsoft.Office.Interop.Excel.XlCellType.xlCellTypeLastCell, Type.Missing);
-                int colCount = lastCell.Row;
-                //ExcelProgressBar.Minimum = 1;
-                //ExcelProgressBar.Maximum = colCount - 1;
-                //ExcelProgressBar.Step = 1;
-
-                //if (colCount == ExcelProgressBar.Maximum)
-                //{
-                //    ExcelProgressBar.Maximum = 100;
-                //}
-
-
-
-
-                // წინასწარ ცხრილის გასუფთავება მანამ ჩანაწერებს შევიტანთ
-
-                // ----აქეეედააააან
-                GeographicDynamicDbContext.Qarsafaris.ExecuteDelete();
-                Type myType = typeof(Qarsafari);
-                //იტერაცია ექსელის ფაილში
-                for (int i = 2; i <= colCount; i++) // colCount tu sworad wakikitxavs
+                using (var workbook = new XLWorkbook(ExcelPath))
                 {
-                    Qarsafari qarsafari = new Qarsafari();
+                    var worksheet = workbook.Worksheet(1);
+                    var lastRow = worksheet.LastRowUsed();
+                    int colCount = lastRow != null ? lastRow.RowNumber() : 0;
+                    
+                    //ExcelProgressBar.Minimum = 1;
+                    //ExcelProgressBar.Maximum = colCount - 1;
+                    //ExcelProgressBar.Step = 1;
 
-                    // თუ უნიკიდ ან ლიტერ აიდი ცარიელია მაშინ ჩაიწერება false თუ არაა ცარიელი მაშინ true
-                    if (String.IsNullOrEmpty(Convert.ToString(xlRange.Cells[i, "A"].Value2)) || String.IsNullOrEmpty(Convert.ToString(xlRange.Cells[i, "B"].Value2)))
+                    //if (colCount == ExcelProgressBar.Maximum)
+                    //{
+                    //    ExcelProgressBar.Maximum = 100;
+                    //}
+
+                    // წინასწარ ცხრილის გასუფთავება მანამ ჩანაწერებს შევიტანთ
+
+                    // ----აქეეედააააან
+                    GeographicDynamicDbContext.Qarsafaris.ExecuteDelete();
+                    Type myType = typeof(Qarsafari);
+                    //იტერაცია ექსელის ფაილში
+                    for (int i = 2; i <= colCount; i++) // colCount tu sworad wakikitxavs
                     {
-                        qarsafari.IsUniqLiterNull = "false";
+                        Qarsafari qarsafari = new Qarsafari();
+                        var row = worksheet.Row(i);
 
-                    }
-                    else
-                    {
-                        qarsafari.IsUniqLiterNull = "true";
-                    }
-
-
-                    foreach (var columnName in GeographicDynamicDbContext.ColumnNames)
-                    {
-                        /////////ამ იფ სთეითმენთით ვახტებით WoodyPlantQuantity სვეტს რადგან არ წავიკითხოთ შემდეგ მეთოდში რომ შეივსოს და არ გადაიწეროს 
-
-                        //if (columnName.Sqlname == "WoodyPlantQuantity")
-                        //{
-                        //    continue;
-                        //}
-                        //Get cell type
-                        if (columnName.ColN != null)
+                        // თუ უნიკიდ ან ლიტერ აიდი ცარიელია მაშინ ჩაიწერება false თუ არაა ცარიელი მაშინ true
+                        var cellA = row.Cell("A").GetValue<string>();
+                        var cellB = row.Cell("B").GetValue<string>();
+                        if (String.IsNullOrEmpty(cellA) || String.IsNullOrEmpty(cellB))
                         {
-
-
-                            object cellValue = xlRange.Cells[i, columnName.ColN].Value2;
-                            if (cellValue != null)
-                            {
-
-
-                                Type cellType = cellValue.GetType();
-                                PropertyInfo propertyInfo = typeof(Qarsafari).GetProperty(columnName.Sqlname);
-                                if (propertyInfo != null)
-                                {
-
-                                    // Handle conversion based on cell type
-                                    if (cellType == typeof(double))
-                                    {
-                                        propertyInfo.SetValue(qarsafari, (double)cellValue);
-                                    }
-                                    else if (cellType == typeof(string))
-                                    {
-                                        propertyInfo.SetValue(qarsafari, cellValue);
-                                    }
-                                    else if (cellType == typeof(DateTime))
-                                    {
-                                        DateTime dateTimeValue;
-                                        if (DateTime.TryParse((string)cellValue, out dateTimeValue))
-                                        {
-                                            propertyInfo.SetValue(qarsafari, dateTimeValue);
-                                        }
-                                        // Handle DateTime conversion if necessary
-                                    }
-                                    // Add other type conversions as necessary
-                                }
-
-                            }
-                            //else
-                            //{
-                            //    cellValue = (int)cellValue + 1;
-                            //    Type cellType = cellValue.GetType();
-                            //    PropertyInfo propertyInfo = typeof(Qarsafari).GetProperty(columnName.Sqlname);
-                            //    if (propertyInfo != null)
-                            //    {
-
-                            //        // Handle conversion based on cell type
-                            //        if (cellType == typeof(double))
-                            //        {
-                            //            propertyInfo.SetValue(qarsafari, (double)cellValue);
-                            //        }
-                            //        else if (cellType == typeof(string))
-                            //        {
-                            //            propertyInfo.SetValue(qarsafari, cellValue);
-                            //        }
-                            //        else if (cellType == typeof(DateTime))
-                            //        {
-                            //            DateTime dateTimeValue;
-                            //            if (DateTime.TryParse((string)cellValue, out dateTimeValue))
-                            //            {
-                            //                propertyInfo.SetValue(qarsafari, dateTimeValue);
-                            //            }
-                            //            // Handle DateTime conversion if necessary
-                            //        }
-                            //        // Add other type conversions as necessary
-                            //    }
-                            //}
+                            qarsafari.IsUniqLiterNull = "false";
                         }
+                        else
+                        {
+                            qarsafari.IsUniqLiterNull = "true";
+                        }
+
+                        foreach (var columnName in GeographicDynamicDbContext.ColumnNames)
+                        {
+                            /////////ამ იფ სთეითმენთით ვახტებით WoodyPlantQuantity სვეტს რადგან არ წავიკითხოთ შემდეგ მეთოდში რომ შეივსოს და არ გადაიწეროს 
+
+                            //if (columnName.Sqlname == "WoodyPlantQuantity")
+                            //{
+                            //    continue;
+                            //}
+                            //Get cell type
+                            if (columnName.ColN != null)
+                            {
+                                var cell = row.Cell(columnName.ColN.Value);
+                                if (!cell.IsEmpty())
+                                {
+                                    object cellValue = cell.GetValue<object>();
+                                    if (cellValue != null)
+                                    {
+                                        Type cellType = cellValue.GetType();
+                                        PropertyInfo propertyInfo = typeof(Qarsafari).GetProperty(columnName.Sqlname);
+                                        if (propertyInfo != null)
+                                        {
+                                            // Handle conversion based on cell type
+                                            if (cellType == typeof(double))
+                                            {
+                                                propertyInfo.SetValue(qarsafari, (double)cellValue);
+                                            }
+                                            else if (cellType == typeof(string))
+                                            {
+                                                propertyInfo.SetValue(qarsafari, cellValue);
+                                            }
+                                            else if (cellType == typeof(DateTime))
+                                            {
+                                                DateTime dateTimeValue;
+                                                if (DateTime.TryParse((string)cellValue, out dateTimeValue))
+                                                {
+                                                    propertyInfo.SetValue(qarsafari, dateTimeValue);
+                                                }
+                                                // Handle DateTime conversion if necessary
+                                            }
+                                            // Add other type conversions as necessary
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        GeographicDynamicDbContext.Qarsafaris.Add(qarsafari); // ახალი ობიექტის დამატება ბაზაში
+                        GeographicDynamicDbContext.SaveChanges(); // ცვლილებების შენახვა
+
+                        //label2.Text = Convert.ToString($"{i - 1} / {colCount - 1}");
+                        //GeographicDynamicDbContext.PerformStep();
                     }
-                    //qarsafari.UniqId = Convert.ToDouble(xlRange.Cells[i, "A"].Value2);
-                    //qarsafari.LiterId = Convert.ToDouble(xlRange.Cells[i, "B"].Value2);
-                    //qarsafari.PhotoN = xlRange.Cells[i, "C"].Value2;
-                    //qarsafari.Region = xlRange.Cells[i, "D"].value2;
-                    //qarsafari.Municipality = xlRange.Cells[i, "E"].Value2;
-                    //qarsafari.Shrubbery = Convert.ToDouble(xlRange.Cells[i, "J"].Value2);
-                    ////qarsafari.WoodyPlantPercent = Convert.ToDouble(xlRange.Cells[i,"K"].Value2);
-                    //qarsafari.WoodyPlantQuantity = Convert.ToDouble(xlRange.Cells[i, "L"].Value2);
-                    //qarsafari.WoodyPlantSpecies = xlRange.Cells[i, "M"].Value2;
-                    //qarsafari.InGoodCondition = Convert.ToDouble(xlRange.Cells[i, "N"].Value2);
-                    //qarsafari.ChoppedDown = Convert.ToDouble(xlRange.Cells[i, "O"].Value2);
-                    //qarsafari.Rampike = Convert.ToDouble(xlRange.Cells[i, "P"].Value2);
-                    //qarsafari.SpeciesMediumAge = Convert.ToDouble(xlRange.Cells[i, "Q"].Value2);
-                    //qarsafari.Company = xlRange.Cells[i, "S"].Value2;
-                    //qarsafari.FieldOperator = xlRange.Cells[i, "T"].Value2;
-                    //qarsafari.Owners = xlRange.Cells[i, "AA"].Value2;
-                    //qarsafari.LandFieldOperator = xlRange.Cells[i, "AB"].Value2;
-                    //qarsafari.Note1 = xlRange.Cells[i, "AC"].Value2;
-                    //qarsafari.Date2 = xlRange.Cells[i, "AD"].Value2;
-                    //qarsafari.LandGisOperator = xlRange.Cells[i, "AE"].Value2;
-                    //qarsafari.Note11 = xlRange.Cells[i, "AF"].Value2;
-                    //qarsafari.Date3 = xlRange.Cells[i, "AG"].Value2;
-                    //qarsafari.CadCod = xlRange.Cells[i, "AH"].Value2;
-
-                    GeographicDynamicDbContext.Qarsafaris.Add(qarsafari); // ახალი ობიექტის დამატება ბაზაში
-                    GeographicDynamicDbContext.SaveChanges(); // ცვლილებების შენახვა
-
-
-                    //label2.Text = Convert.ToString($"{i - 1} / {colCount - 1}");
-                    //GeographicDynamicDbContext.PerformStep();
-
                 }
-                xlApp.Application.Quit();
+                
                 return new Result<bool> { Success = true, StatusCode = System.Net.HttpStatusCode.OK };
             }
             catch (Exception ex)
             {
-                xlApp.Application.Quit();
                 return new Result<bool> { Success = false, StatusCode = System.Net.HttpStatusCode.BadGateway, Message = "შეცდომა მოხდა " + ex.Message };
-                throw;
             }
         }
 
@@ -1680,185 +1620,158 @@ namespace GeographicDynamic_DAL.Models.WindbreakMethods
         {
             var GeographicDynamicDbContext = new GeographicDynamicDbContext();
 
-            //List<Qarsafari> qarsafaris = GeographicDynamicDbContext.Qarsafaris.OrderBy(m => m.UniqId).ToList();
-            Microsoft.Office.Interop.Excel.Application ExcelApp = new Microsoft.Office.Interop.Excel.Application();
-            Workbook ExcelWorkBook = null;
-            ExcelApp.Visible = false;
-            ExcelWorkBook = ExcelApp.Workbooks.Add(XlWBATemplate.xlWBATWorksheet);
-            Worksheet ExcelWorkSheet = ExcelWorkBook.Worksheets[1] as Worksheet;
-
-
-
-
             try
             {
-
-
-
-                // ამით ივსება სათაურების ველები 
-                ExcelWorkSheet.Cells[1, "A"] = "UNIQ_ID";
-                ExcelWorkSheet.Cells[1, "B"] = "Liter_ID";
-                ExcelWorkSheet.Cells[1, "C"] = "Photo_N";
-                ExcelWorkSheet.Cells[1, "C"].EntireColumn.NumberFormat = "@";
-                ExcelWorkSheet.Cells[1, "D"] = "Region";
-                ExcelWorkSheet.Cells[1, "E"] = "Municipality";
-                ExcelWorkSheet.Cells[1, "F"] = "Adm_Mun";
-                ExcelWorkSheet.Cells[1, "G"] = "City_Town_Village";
-                ExcelWorkSheet.Cells[1, "H"] = "Land_Area_Sq_M";
-                ExcelWorkSheet.Cells[1, "I"] = "Land_Area_Ha";
-                ExcelWorkSheet.Cells[1, "J"] = "Shrubbery";
-                ExcelWorkSheet.Cells[1, "K"] = "Woody_Plant_Percent";
-                ExcelWorkSheet.Cells[1, "L"] = "Woody_Plant_Quantity";
-                ExcelWorkSheet.Cells[1, "M"] = "Woody_Plant_Spices";
-                ExcelWorkSheet.Cells[1, "N"] = "VarjisFarti";
-                ExcelWorkSheet.Cells[1, "O"] = "In_Good_Condition";
-                ExcelWorkSheet.Cells[1, "P"] = "Chopped_down";
-                ExcelWorkSheet.Cells[1, "Q"] = "Rampike";
-                ExcelWorkSheet.Cells[1, "R"] = "Spices_Medium_Age";
-                ExcelWorkSheet.Cells[1, "S"] = "Note_";
-                ExcelWorkSheet.Cells[1, "T"] = "Company";
-                ExcelWorkSheet.Cells[1, "U"] = "Field_Operator";
-                ExcelWorkSheet.Cells[1, "V"] = "Date_";
-                ExcelWorkSheet.Cells[1, "V"].EntireColumn.NumberFormat = "@"; //ფორმატტდება დეითის ველის ტიპი ტექსტად
-                ExcelWorkSheet.Cells[1, "W"] = "Gis_Operator";
-                ExcelWorkSheet.Cells[1, "X"] = "DaTe_1";
-                ExcelWorkSheet.Cells[1, "X"].EntireColumn.NumberFormat = "@";//ფორმატტდება დეითის ველის ტიპი ტექსტად
-                ExcelWorkSheet.Cells[1, "Y"] = "Overlap_CAD_CODE";
-                ExcelWorkSheet.Cells[1, "Z"] = "Owner";
-                ExcelWorkSheet.Cells[1, "AA"] = "Legal_person";
-                ExcelWorkSheet.Cells[1, "AB"] = "Owners";
-                ExcelWorkSheet.Cells[1, "AC"] = "Land_Field_Operator";
-                ExcelWorkSheet.Cells[1, "AD"] = "Note1";
-                ExcelWorkSheet.Cells[1, "AE"] = "Date_2";
-                ExcelWorkSheet.Cells[1, "AF"] = "Land_Gis_Operator";
-                ExcelWorkSheet.Cells[1, "AG"] = "Note1_1";
-                ExcelWorkSheet.Cells[1, "AH"] = "Date_3";
-                ExcelWorkSheet.Cells[1, "AI"] = "CAD_COD";
-                ExcelWorkSheet.Cells[1, "AJ"] = "UNIQ_ID_OLD";
-                ExcelWorkSheet.Cells[1, "AK"] = "UNIQ_ID_NEW";
-                ExcelWorkSheet.Cells[1, "AL"] = "UID";
-                ExcelWorkSheet.Cells[1, "AM"] = "ID";
-
-                // ამ ციკლით ივსება Rows სათაურების ქვეშ 
-                for (int r = 0; r < qarsafaris.Count(); r++) //r stands for ExcelRow and c for ExcelColumn
+                using (var workbook = new XLWorkbook())
                 {
+                    var worksheet = workbook.Worksheets.Add("დიდი-ექსელი");
 
+                    // ამით ივსება სათაურების ველები 
+                    worksheet.Cell(1, "A").Value = "UNIQ_ID";
+                    worksheet.Cell(1, "B").Value = "Liter_ID";
+                    worksheet.Cell(1, "C").Value = "Photo_N";
+                    worksheet.Column("C").Style.NumberFormat.Format = "@";
+                    worksheet.Cell(1, "D").Value = "Region";
+                    worksheet.Cell(1, "E").Value = "Municipality";
+                    worksheet.Cell(1, "F").Value = "Adm_Mun";
+                    worksheet.Cell(1, "G").Value = "City_Town_Village";
+                    worksheet.Cell(1, "H").Value = "Land_Area_Sq_M";
+                    worksheet.Cell(1, "I").Value = "Land_Area_Ha";
+                    worksheet.Cell(1, "J").Value = "Shrubbery";
+                    worksheet.Cell(1, "K").Value = "Woody_Plant_Percent";
+                    worksheet.Cell(1, "L").Value = "Woody_Plant_Quantity";
+                    worksheet.Cell(1, "M").Value = "Woody_Plant_Spices";
+                    worksheet.Cell(1, "N").Value = "VarjisFarti";
+                    worksheet.Cell(1, "O").Value = "In_Good_Condition";
+                    worksheet.Cell(1, "P").Value = "Chopped_down";
+                    worksheet.Cell(1, "Q").Value = "Rampike";
+                    worksheet.Cell(1, "R").Value = "Spices_Medium_Age";
+                    worksheet.Cell(1, "S").Value = "Note_";
+                    worksheet.Cell(1, "T").Value = "Company";
+                    worksheet.Cell(1, "U").Value = "Field_Operator";
+                    worksheet.Cell(1, "V").Value = "Date_";
+                    worksheet.Column("V").Style.NumberFormat.Format = "@"; //ფორმატტდება დეითის ველის ტიპი ტექსტად
+                    worksheet.Cell(1, "W").Value = "Gis_Operator";
+                    worksheet.Cell(1, "X").Value = "DaTe_1";
+                    worksheet.Column("X").Style.NumberFormat.Format = "@";//ფორმატტდება დეითის ველის ტიპი ტექსტად
+                    worksheet.Cell(1, "Y").Value = "Overlap_CAD_CODE";
+                    worksheet.Cell(1, "Z").Value = "Owner";
+                    worksheet.Cell(1, "AA").Value = "Legal_person";
+                    worksheet.Cell(1, "AB").Value = "Owners";
+                    worksheet.Cell(1, "AC").Value = "Land_Field_Operator";
+                    worksheet.Cell(1, "AD").Value = "Note1";
+                    worksheet.Cell(1, "AE").Value = "Date_2";
+                    worksheet.Cell(1, "AF").Value = "Land_Gis_Operator";
+                    worksheet.Cell(1, "AG").Value = "Note1_1";
+                    worksheet.Cell(1, "AH").Value = "Date_3";
+                    worksheet.Cell(1, "AI").Value = "CAD_COD";
+                    worksheet.Cell(1, "AJ").Value = "UNIQ_ID_OLD";
+                    worksheet.Cell(1, "AK").Value = "UNIQ_ID_NEW";
+                    worksheet.Cell(1, "AL").Value = "UID";
+                    worksheet.Cell(1, "AM").Value = "ID";
 
-                    QarsafariGrouped qarsafariGrouped = GeographicDynamicDbContext.QarsafariGroupeds.FirstOrDefault(x => x.UniqId == qarsafaris[r].UniqId);
-                    //ExcelWorkSheet.Cells[r + 2, "A"] = qarsafaris[r].UniqId;
-                    if (qarsafaris[r].IsUniqLiterNull == "true")
+                    // ამ ციკლით ივსება Rows სათაურების ქვეშ 
+                    for (int r = 0; r < qarsafaris.Count(); r++) //r stands for ExcelRow and c for ExcelColumn
                     {
-                        ExcelWorkSheet.Cells[r + 2, "A"] = qarsafaris[r].UniqId;
-                        ExcelWorkSheet.Cells[r + 2, "B"] = qarsafaris[r].LiterId;
-                        ExcelWorkSheet.Cells[r + 2, "AJ"] = qarsafaris[r].UniqIdOld;
-                        ExcelWorkSheet.Cells[r + 2, "K"] = Math.Round(Convert.ToDouble(qarsafariGrouped.WoodyPlantPercent), 1);
-                        ExcelWorkSheet.Cells[r + 2, "C"] = qarsafariGrouped.PhotoN; // ფოტოები მოდის დაგრუპულიდან 
-                        ExcelWorkSheet.Cells[r + 2, "D"] = qarsafaris[r].Region;
-                        ExcelWorkSheet.Cells[r + 2, "E"] = qarsafaris[r].Municipality;
-                        ExcelWorkSheet.Cells[r + 2, "F"] = qarsafaris[r].AdmMun;
-                        ExcelWorkSheet.Cells[r + 2, "G"] = qarsafaris[r].CityTownVillage;
-                        ExcelWorkSheet.Cells[r + 2, "H"] = qarsafaris[r].LandAreaSqM;
-                        ExcelWorkSheet.Cells[r + 2, "I"] = qarsafaris[r].LandAreaHa;
-                        ExcelWorkSheet.Cells[r + 2, "V"] = qarsafariGrouped.Date;
-                        ExcelWorkSheet.Cells[r + 2, "Z"] = qarsafaris[r].Owner;
+                        QarsafariGrouped qarsafariGrouped = GeographicDynamicDbContext.QarsafariGroupeds.FirstOrDefault(x => x.UniqId == qarsafaris[r].UniqId);
+                        int rowNum = r + 2;
+                        
+                        if (qarsafaris[r].IsUniqLiterNull == "true")
+                        {
+                            worksheet.Cell(rowNum, "A").Value = qarsafaris[r].UniqId;
+                            worksheet.Cell(rowNum, "B").Value = qarsafaris[r].LiterId;
+                            worksheet.Cell(rowNum, "AJ").Value = qarsafaris[r].UniqIdOld;
+                            worksheet.Cell(rowNum, "K").Value = Math.Round(Convert.ToDouble(qarsafariGrouped?.WoodyPlantPercent ?? 0), 1);
+                            worksheet.Cell(rowNum, "C").Value = qarsafariGrouped?.PhotoN; // ფოტოები მოდის დაგრუპულიდან 
+                            worksheet.Cell(rowNum, "D").Value = qarsafaris[r].Region;
+                            worksheet.Cell(rowNum, "E").Value = qarsafaris[r].Municipality;
+                            worksheet.Cell(rowNum, "F").Value = qarsafaris[r].AdmMun;
+                            worksheet.Cell(rowNum, "G").Value = qarsafaris[r].CityTownVillage;
+                            worksheet.Cell(rowNum, "H").Value = qarsafaris[r].LandAreaSqM;
+                            worksheet.Cell(rowNum, "I").Value = qarsafaris[r].LandAreaHa;
+                            worksheet.Cell(rowNum, "V").Value = qarsafariGrouped?.Date;
+                            worksheet.Cell(rowNum, "Z").Value = qarsafaris[r].Owner;
+                        }
+
+                        worksheet.Cell(rowNum, "J").Value = qarsafaris[r].Shrubbery;
+                        worksheet.Cell(rowNum, "L").Value = qarsafaris[r].WoodyPlantQuantity;
+                        worksheet.Cell(rowNum, "M").Value = qarsafaris[r].WoodyPlantSpecies;
+                        worksheet.Cell(rowNum, "N").Value = qarsafaris[r].VarjisFarti;
+
+                        // მოწმდება თუ სადმე sumofGoodChoppedRampike განსხვავდება 0-ს ან 100-ს იდეაში 0.1 ან მეტია ან ნაკლები და მაგის მიხედვით 
+                        // ხორციელდება გამოკლება ან მიმატება 0.1-ის 
+                        var sumofGoodChoppedRampike = Math.Round(Math.Round(Convert.ToDouble(qarsafaris[r].InGoodCondition ?? 0), 1)
+                            + Math.Round(Convert.ToDouble(qarsafaris[r].ChoppedDown ?? 0), 1)
+                            + Math.Round(Convert.ToDouble(qarsafaris[r].Rampike ?? 0), 1), 1);
+
+                        switch (sumofGoodChoppedRampike)
+                        {
+                            case 99.9:
+                                worksheet.Cell(rowNum, "O").Value = Math.Round(Convert.ToDouble(qarsafaris[r].InGoodCondition ?? 0), 1) + 0.1;
+                                worksheet.Cell(rowNum, "P").Value = Math.Round(Convert.ToDouble(qarsafaris[r].ChoppedDown ?? 0), 1);
+                                worksheet.Cell(rowNum, "Q").Value = Math.Round(Convert.ToDouble(qarsafaris[r].Rampike ?? 0), 1);
+                                break;
+                            case 100.1:
+                                if (qarsafaris[r].InGoodCondition > 0)
+                                {
+                                    worksheet.Cell(rowNum, "O").Value = Math.Round(Convert.ToDouble(qarsafaris[r].InGoodCondition ?? 0), 1) - 0.1;
+                                    worksheet.Cell(rowNum, "P").Value = Math.Round(Convert.ToDouble(qarsafaris[r].ChoppedDown ?? 0), 1);
+                                    worksheet.Cell(rowNum, "Q").Value = Math.Round(Convert.ToDouble(qarsafaris[r].Rampike ?? 0), 1);
+                                }
+                                else if (qarsafaris[r].ChoppedDown > 0)
+                                {
+                                    worksheet.Cell(rowNum, "O").Value = Math.Round(Convert.ToDouble(qarsafaris[r].InGoodCondition ?? 0), 1);
+                                    worksheet.Cell(rowNum, "P").Value = Math.Round(Convert.ToDouble(qarsafaris[r].ChoppedDown ?? 0), 1) - 0.1;
+                                    worksheet.Cell(rowNum, "Q").Value = Math.Round(Convert.ToDouble(qarsafaris[r].Rampike ?? 0), 1);
+                                }
+                                else
+                                {
+                                    worksheet.Cell(rowNum, "O").Value = Math.Round(Convert.ToDouble(qarsafaris[r].InGoodCondition ?? 0), 1);
+                                    worksheet.Cell(rowNum, "P").Value = Math.Round(Convert.ToDouble(qarsafaris[r].ChoppedDown ?? 0), 1);
+                                    worksheet.Cell(rowNum, "Q").Value = Math.Round(Convert.ToDouble(qarsafaris[r].Rampike ?? 0), 1) - 0.1;
+                                }
+                                break;
+                            default:
+                                worksheet.Cell(rowNum, "O").Value = Math.Round(Convert.ToDouble(qarsafaris[r].InGoodCondition ?? 0), 1);
+                                worksheet.Cell(rowNum, "P").Value = Math.Round(Convert.ToDouble(qarsafaris[r].ChoppedDown ?? 0), 1);
+                                worksheet.Cell(rowNum, "Q").Value = Math.Round(Convert.ToDouble(qarsafaris[r].Rampike ?? 0), 1);
+                                break;
+                        }
+                        
+                        worksheet.Cell(rowNum, "R").Value = qarsafaris[r].SpeciesMediumAge;
+                        worksheet.Cell(rowNum, "S").Value = qarsafaris[r].Note;
+                        worksheet.Cell(rowNum, "T").Value = qarsafaris[r].Company;
+                        worksheet.Cell(rowNum, "U").Value = qarsafaris[r].FieldOperator;
+                        worksheet.Cell(rowNum, "W").Value = qarsafaris[r].GisOperator;
+                        worksheet.Cell(rowNum, "X").Value = qarsafaris[r].DaTe1;
+                        worksheet.Cell(rowNum, "Y").Value = qarsafaris[r].OverlapCadCode;
+                        worksheet.Cell(rowNum, "AA").Value = qarsafaris[r].LegalPerson;
+                        worksheet.Cell(rowNum, "AB").Value = qarsafaris[r].Owners;
+                        worksheet.Cell(rowNum, "AC").Value = qarsafaris[r].LandFieldOperator;
+                        worksheet.Cell(rowNum, "AD").Value = qarsafaris[r].Note1;
+                        worksheet.Cell(rowNum, "AE").Value = qarsafaris[r].Date2;
+                        worksheet.Cell(rowNum, "AF").Value = qarsafaris[r].LandGisOperator;
+                        worksheet.Cell(rowNum, "AG").Value = qarsafaris[r].Note11;
+                        worksheet.Cell(rowNum, "AH").Value = qarsafaris[r].Date3;
+                        worksheet.Cell(rowNum, "AI").Value = qarsafaris[r].CadCod;
+                        worksheet.Cell(rowNum, "AK").Value = qarsafaris[r].UniqIdNew;
+                        worksheet.Cell(rowNum, "AL").Value = qarsafaris[r].Uid;
+                        worksheet.Cell(rowNum, "AM").Value = qarsafaris[r].Id;
                     }
 
-
-
-
-                    ExcelWorkSheet.Cells[r + 2, "J"] = qarsafaris[r].Shrubbery;
-                    ExcelWorkSheet.Cells[r + 2, "L"] = qarsafaris[r].WoodyPlantQuantity;
-                    ExcelWorkSheet.Cells[r + 2, "M"] = qarsafaris[r].WoodyPlantSpecies;
-                    ExcelWorkSheet.Cells[r + 2, "N"] = qarsafaris[r].VarjisFarti;
-
-                    // მოწმდება თუ სადმე sumofGoodChoppedRampike განსხვავდება 0-ს ან 100-ს იდეაში 0.1 ან მეტია ან ნაკლები და მაგის მიხედვით 
-                    // ხორციელდება გამოკლება ან მიმატება 0.1-ის 
-                    var sumofGoodChoppedRampike = Math.Round(Math.Round(Convert.ToDouble(qarsafaris[r].InGoodCondition), 1)
-                        + Math.Round(Convert.ToDouble(qarsafaris[r].ChoppedDown), 1)
-                        + Math.Round(Convert.ToDouble(qarsafaris[r].Rampike), 1), 1);
-
-                    switch (sumofGoodChoppedRampike)
-                    {
-                        case 99.9:
-                            ExcelWorkSheet.Cells[r + 2, "O"] = Math.Round(Convert.ToDouble(qarsafaris[r].InGoodCondition), 1) + 0.1;
-                            ExcelWorkSheet.Cells[r + 2, "P"] = Math.Round(Convert.ToDouble(qarsafaris[r].ChoppedDown), 1);
-                            ExcelWorkSheet.Cells[r + 2, "Q"] = Math.Round(Convert.ToDouble(qarsafaris[r].Rampike), 1);
-                            break;
-                        case 100.1:
-                            if (qarsafaris[r].InGoodCondition > 0)
-                            {
-                                ExcelWorkSheet.Cells[r + 2, "O"] = Math.Round(Convert.ToDouble(qarsafaris[r].InGoodCondition), 1) - 0.1;
-                                ExcelWorkSheet.Cells[r + 2, "P"] = Math.Round(Convert.ToDouble(qarsafaris[r].ChoppedDown), 1);
-                                ExcelWorkSheet.Cells[r + 2, "Q"] = Math.Round(Convert.ToDouble(qarsafaris[r].Rampike), 1);
-                            }
-                            else if (qarsafaris[r].ChoppedDown > 0)
-                            {
-                                ExcelWorkSheet.Cells[r + 2, "O"] = Math.Round(Convert.ToDouble(qarsafaris[r].InGoodCondition), 1);
-                                ExcelWorkSheet.Cells[r + 2, "P"] = Math.Round(Convert.ToDouble(qarsafaris[r].ChoppedDown), 1) - 0.1;
-                                ExcelWorkSheet.Cells[r + 2, "Q"] = Math.Round(Convert.ToDouble(qarsafaris[r].Rampike), 1);
-                            }
-                            else
-                            {
-                                ExcelWorkSheet.Cells[r + 2, "O"] = Math.Round(Convert.ToDouble(qarsafaris[r].InGoodCondition), 1);
-                                ExcelWorkSheet.Cells[r + 2, "P"] = Math.Round(Convert.ToDouble(qarsafaris[r].ChoppedDown), 1);
-                                ExcelWorkSheet.Cells[r + 2, "Q"] = Math.Round(Convert.ToDouble(qarsafaris[r].Rampike), 1) - 0.1;
-                            }
-                            break;
-                        default:
-                            ExcelWorkSheet.Cells[r + 2, "O"] = Math.Round(Convert.ToDouble(qarsafaris[r].InGoodCondition), 1);
-                            ExcelWorkSheet.Cells[r + 2, "P"] = Math.Round(Convert.ToDouble(qarsafaris[r].ChoppedDown), 1);
-                            ExcelWorkSheet.Cells[r + 2, "Q"] = Math.Round(Convert.ToDouble(qarsafaris[r].Rampike), 1);
-                            break;
-                    }
-                    //ExcelWorkSheet.Cells[r + 2, "O"] = Math.Round(Convert.ToDouble(qarsafaris[r].InGoodCondition), 1);
-                    //ExcelWorkSheet.Cells[r + 2, "P"] = Math.Round(Convert.ToDouble(qarsafaris[r].ChoppedDown), 1);
-                    //ExcelWorkSheet.Cells[r + 2, "Q"] = Math.Round(Convert.ToDouble(qarsafaris[r].Rampike), 1);
-                    ExcelWorkSheet.Cells[r + 2, "R"] = qarsafaris[r].SpeciesMediumAge;
-                    ExcelWorkSheet.Cells[r + 2, "S"] = qarsafaris[r].Note;
-                    ExcelWorkSheet.Cells[r + 2, "T"] = qarsafaris[r].Company;
-                    ExcelWorkSheet.Cells[r + 2, "U"] = qarsafaris[r].FieldOperator;
-                    //ExcelWorkSheet.Cells[r + 2, "V"] = qarsafaris[r].Date;
-                    ExcelWorkSheet.Cells[r + 2, "W"] = qarsafaris[r].GisOperator;
-                    ExcelWorkSheet.Cells[r + 2, "X"] = qarsafaris[r].DaTe1;
-                    ExcelWorkSheet.Cells[r + 2, "Y"] = qarsafaris[r].OverlapCadCode;
-
-                    ExcelWorkSheet.Cells[r + 2, "AA"] = qarsafaris[r].LegalPerson;
-                    ExcelWorkSheet.Cells[r + 2, "AB"] = qarsafaris[r].Owners;
-                    ExcelWorkSheet.Cells[r + 2, "AC"] = qarsafaris[r].LandFieldOperator;
-                    ExcelWorkSheet.Cells[r + 2, "AD"] = qarsafaris[r].Note1;
-                    ExcelWorkSheet.Cells[r + 2, "AE"] = qarsafaris[r].Date2;
-                    ExcelWorkSheet.Cells[r + 2, "AF"] = qarsafaris[r].LandGisOperator;
-                    ExcelWorkSheet.Cells[r + 2, "AG"] = qarsafaris[r].Note11;
-                    ExcelWorkSheet.Cells[r + 2, "AH"] = qarsafaris[r].Date3;
-                    ExcelWorkSheet.Cells[r + 2, "AI"] = qarsafaris[r].CadCod;
-                    ExcelWorkSheet.Cells[r + 2, "AK"] = qarsafaris[r].UniqIdNew;
-                    ExcelWorkSheet.Cells[r + 2, "AL"] = qarsafaris[r].Uid;
-                    ExcelWorkSheet.Cells[r + 2, "AM"] = qarsafaris[r].Id;
+                    workbook.SaveAs(ExcelDestinationPath + $"\\{ExcelName}.xlsx");
                 }
-
-                ExcelWorkBook.Worksheets[1].Name = "დიდი-ექსელი";//Renaming the Sheet1 to MySheet
-                ExcelWorkBook.SaveAs(ExcelDestinationPath + $"\\{ExcelName}.xlsx");
-                ExcelWorkBook.Close();
-                ExcelApp.Quit();
-                Marshal.ReleaseComObject(ExcelWorkSheet);
-                Marshal.ReleaseComObject(ExcelWorkBook);
-                Marshal.ReleaseComObject(ExcelApp);
 
                 return new Result<bool>
                 {
                     Success = true,
                     StatusCode = System.Net.HttpStatusCode.OK
                 };
-
             }
-
             catch (Exception ex)
             {
-                ExcelWorkBook.Close();
-                ExcelApp.Quit();
                 return new Result<bool>
                 {
-
                     Success = false,
                     StatusCode = System.Net.HttpStatusCode.BadGateway,
                     Message = "მოხდა შეცდომა SQL-დან ახალ Execl-ში გადაწერის დროს" + ex.Message
@@ -1882,16 +1795,8 @@ namespace GeographicDynamic_DAL.Models.WindbreakMethods
 
             GeographicDynamicDbContext geographicDynamicDbContext = new GeographicDynamicDbContext(); //უკავშირდება კონტექსტს რომ გაიგოს ცხრილები SQL-დან 
 
-            Microsoft.Office.Interop.Excel.Application ExcelApp = new Microsoft.Office.Interop.Excel.Application(); //იქმნება აპლიკაცია წინასწარ 
-            Workbook ExcelWorkBook = null; // წინასწარ იქმნება ვორკბუკის ცვლადი რომ შემდეგში გამოვიყენოთ 
-            Worksheet ExcelWorkSheet = null; // ასევე წინასწარ იქმნება შიტის ცვლადი რომ გამოვიყენოთ შემდეგ 
-            ExcelApp.Visible = false; // აქ ვანიჭებთ ექსელის ფანჯარას რომ გამოჩნდეს პროგრამის მსვლელობა 
-            ExcelWorkBook = ExcelApp.Workbooks.Add(XlWBATemplate.xlWBATWorksheet);  // იქმნება ახალი ექსელის workbook რომელშიც გვაქ ერთი შიტი და ამ შიტს ვიყენებთ სამომავლოდ 
-
-
             // Dictionary to store the mapping from the Access file
             Dictionary<string, string> accessData = new Dictionary<string, string>();
-
 
             try
             {
@@ -1954,137 +1859,126 @@ namespace GeographicDynamic_DAL.Models.WindbreakMethods
 
 
 
-                    ExcelWorkSheet = ExcelWorkBook.Worksheets[1]; // აქ ვირჩევთ სამუშაო შიტს ვორკბუკიდან(ექსელიდან) ჩვენ შემთხვევაში ერთია და მაგიტომ გვაქ Worksheets[1} ინდექსად 1 
-
-
-                // ამ კოდის ფრაგმენტებში ივსება სათაურის ველები სხვა სიტყვებით რომ ვთქვათ პირველ row-ში იწერება მნიშვნელობები რამდენი სვეტიც გვაქ (column) 
-                ExcelWorkSheet.Cells[1, "A"] = "UNIQ_ID";
-                ExcelWorkSheet.Cells[1, "B"] = "Liter_ID";
-                ExcelWorkSheet.Cells[1, "C"] = "Photo_N";
-                ExcelWorkSheet.Cells[1, "C"].EntireColumn.NumberFormat = "@";//ფორმატტდება დეითის ველის ტიპი ტექსტად
-                ExcelWorkSheet.Cells[1, "D"] = "REGION";
-                ExcelWorkSheet.Cells[1, "E"] = "Municipality";
-                ExcelWorkSheet.Cells[1, "F"] = "Adm_Mun";
-                ExcelWorkSheet.Cells[1, "G"] = "City_Town_Village";
-                ExcelWorkSheet.Cells[1, "H"] = "Land_Area_Sq_m";
-                ExcelWorkSheet.Cells[1, "I"] = "Land_Area_Ha";
-                ExcelWorkSheet.Cells[1, "J"] = "shrubbery";
-                ExcelWorkSheet.Cells[1, "K"] = "Woody_plant_percent";
-                ExcelWorkSheet.Cells[1, "L"] = "Woody_plant_quantity";
-                //ExcelWorkSheet.Cells[1, "M"] = "VarjisFarti";
-                ExcelWorkSheet.Cells[1, "N"] = "woody_plant_species";
-                ExcelWorkSheet.Cells[1, "O"] = "In_good_condition";
-                ExcelWorkSheet.Cells[1, "P"] = "chopped_down";
-                ExcelWorkSheet.Cells[1, "Q"] = "rampike";
-                ExcelWorkSheet.Cells[1, "R"] = "species_medium_age";
-                ExcelWorkSheet.Cells[1, "S"] = "Note_";
-                ExcelWorkSheet.Cells[1, "T"] = "Company";
-                ExcelWorkSheet.Cells[1, "U"] = "Field_Operator";
-                ExcelWorkSheet.Cells[1, "V"] = "Date_";
-                ExcelWorkSheet.Cells[1, "V"].EntireColumn.NumberFormat = "@";//ფორმატტდება დეითის ველის ტიპი ტექსტად
-                ExcelWorkSheet.Cells[1, "W"] = "Gis_Operator";
-                ExcelWorkSheet.Cells[1, "X"] = "DaTe_1";
-                ExcelWorkSheet.Cells[1, "X"].EntireColumn.NumberFormat = "@";//ფორმატტდება დეითის ველის ტიპი ტექსტად
-                ExcelWorkSheet.Cells[1, "Y"] = "Overlap_CAD_CODE";
-                ExcelWorkSheet.Cells[1, "Z"] = "Owner";
-                ExcelWorkSheet.Cells[1, "AA"] = "Legal_person";
-                ExcelWorkSheet.Cells[1, "AB"] = "Owners";
-                ExcelWorkSheet.Cells[1, "AC"] = "Land_Field_Operator";
-                ExcelWorkSheet.Cells[1, "AD"] = "Note1";
-                ExcelWorkSheet.Cells[1, "AE"] = "Date_2";
-                ExcelWorkSheet.Cells[1, "AF"] = "Land_Gis_Operator";
-                ExcelWorkSheet.Cells[1, "AG"] = "Note1_1";
-                ExcelWorkSheet.Cells[1, "AH"] = "Date_3";
-                ExcelWorkSheet.Cells[1, "AI"] = "CAD_COD";
-                ExcelWorkSheet.Cells[1, "AJ"] = "UNIQ_ID_OLD";
-                ExcelWorkSheet.Cells[1, "AK"] = "UNIQ_ID_NEW";
-                ExcelWorkSheet.Cells[1, "AL"] = "UID";
-                ExcelWorkSheet.Cells[1, "AM"] = "ID";
-                ExcelWorkSheet.Cells[1, "AN"] = "Uniq_ID_MDB";
-
-                for (var r = 0; r < qarsafariGroupeds.Count(); r++) // კეთდება ციკლი იმისთვის რო დაიაროს სათითაო ველი და ჩაიწეროს ექსელის შიტში 
-                                                                    // R ამ შემთხვევაში ნიშნავს RowNumbers რომ ჩაწერა დაიწყოს მეროე რიგიდან რადგან პირველიში სვეტების სახელები წერია 
-                                                                    // ყოველ იტერაციაზე R-ს ერთი ემატება რის გამოც შემდეგ რიგში გადადის ინფორმაციის შევსება 
+                using (var workbook = new XLWorkbook())
                 {
-                    // ციკლის შიგნით იწერება რომელ სვეტში რა ინფორმაცია ჩაიწეროს 
+                    var worksheet = workbook.Worksheets.Add("პატარა-ექსელი");
 
-                    ExcelWorkSheet.Cells[r + 2, "A"] = qarsafariGroupeds[r].UniqId;
-                    ExcelWorkSheet.Cells[r + 2, "B"] = qarsafariGroupeds[r].LiterId;
-                    ExcelWorkSheet.Cells[r + 2, "C"] = qarsafariGroupeds[r].PhotoN;
-                    ExcelWorkSheet.Cells[r + 2, "D"] = qarsafariGroupeds[r].Region;
-                    ExcelWorkSheet.Cells[r + 2, "E"] = qarsafariGroupeds[r].Municipality;
-                    ExcelWorkSheet.Cells[r + 2, "F"] = qarsafariGroupeds[r].AdmMun;
-                    ExcelWorkSheet.Cells[r + 2, "G"] = qarsafariGroupeds[r].CityTownVillage;
-                    ExcelWorkSheet.Cells[r + 2, "H"] = qarsafariGroupeds[r].LandAreaSqM;
-                    ExcelWorkSheet.Cells[r + 2, "I"] = qarsafariGroupeds[r].LandAreaHa;
-                    ExcelWorkSheet.Cells[r + 2, "J"] = qarsafariGroupeds[r].Shrubbery;
-                    ExcelWorkSheet.Cells[r + 2, "K"] = qarsafariGroupeds[r].WoodyPlantPercent;
-                    ExcelWorkSheet.Cells[r + 2, "L"] = qarsafariGroupeds[r].WoodyPlantQuantity;
-                    //ExcelWorkSheet.Cells[r + 2, "M"] = qarsafariGroupeds[r].VarjisFarti;
-                    ExcelWorkSheet.Cells[r + 2, "N"] = qarsafariGroupeds[r].WoodyPlantSpecies;
+                    // ამ კოდის ფრაგმენტებში ივსება სათაურის ველები სხვა სიტყვებით რომ ვთქვათ პირველ row-ში იწერება მნიშვნელობები რამდენი სვეტიც გვაქ (column) 
+                    worksheet.Cell(1, "A").Value = "UNIQ_ID";
+                    worksheet.Cell(1, "B").Value = "Liter_ID";
+                    worksheet.Cell(1, "C").Value = "Photo_N";
+                    worksheet.Column("C").Style.NumberFormat.Format = "@";//ფორმატტდება დეითის ველის ტიპი ტექსტად
+                    worksheet.Cell(1, "D").Value = "REGION";
+                    worksheet.Cell(1, "E").Value = "Municipality";
+                    worksheet.Cell(1, "F").Value = "Adm_Mun";
+                    worksheet.Cell(1, "G").Value = "City_Town_Village";
+                    worksheet.Cell(1, "H").Value = "Land_Area_Sq_m";
+                    worksheet.Cell(1, "I").Value = "Land_Area_Ha";
+                    worksheet.Cell(1, "J").Value = "shrubbery";
+                    worksheet.Cell(1, "K").Value = "Woody_plant_percent";
+                    worksheet.Cell(1, "L").Value = "Woody_plant_quantity";
+                    worksheet.Cell(1, "N").Value = "woody_plant_species";
+                    worksheet.Cell(1, "O").Value = "In_good_condition";
+                    worksheet.Cell(1, "P").Value = "chopped_down";
+                    worksheet.Cell(1, "Q").Value = "rampike";
+                    worksheet.Cell(1, "R").Value = "species_medium_age";
+                    worksheet.Cell(1, "S").Value = "Note_";
+                    worksheet.Cell(1, "T").Value = "Company";
+                    worksheet.Cell(1, "U").Value = "Field_Operator";
+                    worksheet.Cell(1, "V").Value = "Date_";
+                    worksheet.Column("V").Style.NumberFormat.Format = "@";//ფორმატტდება დეითის ველის ტიპი ტექსტად
+                    worksheet.Cell(1, "W").Value = "Gis_Operator";
+                    worksheet.Cell(1, "X").Value = "DaTe_1";
+                    worksheet.Column("X").Style.NumberFormat.Format = "@";//ფორმატტდება დეითის ველის ტიპი ტექსტად
+                    worksheet.Cell(1, "Y").Value = "Overlap_CAD_CODE";
+                    worksheet.Cell(1, "Z").Value = "Owner";
+                    worksheet.Cell(1, "AA").Value = "Legal_person";
+                    worksheet.Cell(1, "AB").Value = "Owners";
+                    worksheet.Cell(1, "AC").Value = "Land_Field_Operator";
+                    worksheet.Cell(1, "AD").Value = "Note1";
+                    worksheet.Cell(1, "AE").Value = "Date_2";
+                    worksheet.Cell(1, "AF").Value = "Land_Gis_Operator";
+                    worksheet.Cell(1, "AG").Value = "Note1_1";
+                    worksheet.Cell(1, "AH").Value = "Date_3";
+                    worksheet.Cell(1, "AI").Value = "CAD_COD";
+                    worksheet.Cell(1, "AJ").Value = "UNIQ_ID_OLD";
+                    worksheet.Cell(1, "AK").Value = "UNIQ_ID_NEW";
+                    worksheet.Cell(1, "AL").Value = "UID";
+                    worksheet.Cell(1, "AM").Value = "ID";
+                    worksheet.Cell(1, "AN").Value = "Uniq_ID_MDB";
 
-                    // სადაც სახეობა არ გვიწერია და ხეხილის რაოდენობა იქ იწერება კარგ მდომარეობაში 0 
-                    if (qarsafariGroupeds[r].WoodyPlantQuantity == 0)
+                    for (var r = 0; r < qarsafariGroupeds.Count(); r++) // კეთდება ციკლი იმისთვის რო დაიაროს სათითაო ველი და ჩაიწეროს ექსელის შიტში 
                     {
-                        ExcelWorkSheet.Cells[r + 2, "O"] = 0;
-                        ExcelWorkSheet.Cells[r + 2, "P"] = 0;
-                        ExcelWorkSheet.Cells[r + 2, "Q"] = 0;
-                    }
-                    else
-                    {
-                        ExcelWorkSheet.Cells[r + 2, "O"] = Math.Round(Convert.ToDouble(qarsafariGroupeds[r].InGoodCondition), 1);
-                        ExcelWorkSheet.Cells[r + 2, "P"] = Math.Round(Convert.ToDouble(qarsafariGroupeds[r].ChoppedDown), 1);
-                        ExcelWorkSheet.Cells[r + 2, "Q"] = Math.Round(Convert.ToDouble(qarsafariGroupeds[r].Rampike), 1);
-                    }
-                    ExcelWorkSheet.Cells[r + 2, "R"] = qarsafariGroupeds[r].SpeciesMediumAge;
-                    ExcelWorkSheet.Cells[r + 2, "S"] = qarsafariGroupeds[r].Note;
-                    ExcelWorkSheet.Cells[r + 2, "T"] = qarsafariGroupeds[r].Company;
-                    ExcelWorkSheet.Cells[r + 2, "U"] = qarsafariGroupeds[r].FieldOperator;
-                    ExcelWorkSheet.Cells[r + 2, "V"] = qarsafariGroupeds[r].Date;
-                    ExcelWorkSheet.Cells[r + 2, "W"] = qarsafariGroupeds[r].GisOperator;
-                    ExcelWorkSheet.Cells[r + 2, "X"] = qarsafariGroupeds[r].DaTe1;
-                    ExcelWorkSheet.Cells[r + 2, "Y"] = qarsafariGroupeds[r].OverlapCadCode;
-                    ExcelWorkSheet.Cells[r + 2, "Z"] = qarsafariGroupeds[r].Owner;
-                    ExcelWorkSheet.Cells[r + 2, "AA"] = qarsafariGroupeds[r].LegalPerson;
-                    ExcelWorkSheet.Cells[r + 2, "AB"] = qarsafariGroupeds[r].Owners;
-                    ExcelWorkSheet.Cells[r + 2, "AC"] = qarsafariGroupeds[r].LandFieldOperator;
-                    ExcelWorkSheet.Cells[r + 2, "AD"] = qarsafariGroupeds[r].Note1;
-                    ExcelWorkSheet.Cells[r + 2, "AE"] = qarsafariGroupeds[r].Date2;
-                    ExcelWorkSheet.Cells[r + 2, "AF"] = qarsafariGroupeds[r].LandGisOperator;
-                    ExcelWorkSheet.Cells[r + 2, "AG"] = qarsafariGroupeds[r].Note11;
-                    ExcelWorkSheet.Cells[r + 2, "AH"] = qarsafariGroupeds[r].Date3;
-                    ExcelWorkSheet.Cells[r + 2, "AI"] = qarsafariGroupeds[r].CadCod;
-                    ExcelWorkSheet.Cells[r + 2, "AJ"] = qarsafariGroupeds[r].UniqIdOld;
-                    ExcelWorkSheet.Cells[r + 2, "AK"] = qarsafariGroupeds[r].UniqIdNew;
-                    ExcelWorkSheet.Cells[r + 2, "AL"] = qarsafariGroupeds[r].Uid;
-                    ExcelWorkSheet.Cells[r + 2, "AM"] = qarsafariGroupeds[r].Id;
+                        int rowNum = r + 2;
+                        
+                        worksheet.Cell(rowNum, "A").Value = qarsafariGroupeds[r].UniqId;
+                        worksheet.Cell(rowNum, "B").Value = qarsafariGroupeds[r].LiterId;
+                        worksheet.Cell(rowNum, "C").Value = qarsafariGroupeds[r].PhotoN;
+                        worksheet.Cell(rowNum, "D").Value = qarsafariGroupeds[r].Region;
+                        worksheet.Cell(rowNum, "E").Value = qarsafariGroupeds[r].Municipality;
+                        worksheet.Cell(rowNum, "F").Value = qarsafariGroupeds[r].AdmMun;
+                        worksheet.Cell(rowNum, "G").Value = qarsafariGroupeds[r].CityTownVillage;
+                        worksheet.Cell(rowNum, "H").Value = qarsafariGroupeds[r].LandAreaSqM;
+                        worksheet.Cell(rowNum, "I").Value = qarsafariGroupeds[r].LandAreaHa;
+                        worksheet.Cell(rowNum, "J").Value = qarsafariGroupeds[r].Shrubbery;
+                        worksheet.Cell(rowNum, "K").Value = qarsafariGroupeds[r].WoodyPlantPercent;
+                        worksheet.Cell(rowNum, "L").Value = qarsafariGroupeds[r].WoodyPlantQuantity;
+                        worksheet.Cell(rowNum, "N").Value = qarsafariGroupeds[r].WoodyPlantSpecies;
 
-                    string uniqIdGadanomrili = qarsafariGroupeds[r].UniqId.ToString();
-                    if (accessData.ContainsKey(uniqIdGadanomrili))
-                    {
-                        ExcelWorkSheet.Cells[r + 2, "AN"] = accessData[uniqIdGadanomrili];
+                        // სადაც სახეობა არ გვიწერია და ხეხილის რაოდენობა იქ იწერება კარგ მდომარეობაში 0 
+                        if (qarsafariGroupeds[r].WoodyPlantQuantity == 0)
+                        {
+                            worksheet.Cell(rowNum, "O").Value = 0;
+                            worksheet.Cell(rowNum, "P").Value = 0;
+                            worksheet.Cell(rowNum, "Q").Value = 0;
+                        }
+                        else
+                        {
+                            worksheet.Cell(rowNum, "O").Value = Math.Round(Convert.ToDouble(qarsafariGroupeds[r].InGoodCondition ?? 0), 1);
+                            worksheet.Cell(rowNum, "P").Value = Math.Round(Convert.ToDouble(qarsafariGroupeds[r].ChoppedDown ?? 0), 1);
+                            worksheet.Cell(rowNum, "Q").Value = Math.Round(Convert.ToDouble(qarsafariGroupeds[r].Rampike ?? 0), 1);
+                        }
+                        worksheet.Cell(rowNum, "R").Value = qarsafariGroupeds[r].SpeciesMediumAge;
+                        worksheet.Cell(rowNum, "S").Value = qarsafariGroupeds[r].Note;
+                        worksheet.Cell(rowNum, "T").Value = qarsafariGroupeds[r].Company;
+                        worksheet.Cell(rowNum, "U").Value = qarsafariGroupeds[r].FieldOperator;
+                        worksheet.Cell(rowNum, "V").Value = qarsafariGroupeds[r].Date;
+                        worksheet.Cell(rowNum, "W").Value = qarsafariGroupeds[r].GisOperator;
+                        worksheet.Cell(rowNum, "X").Value = qarsafariGroupeds[r].DaTe1;
+                        worksheet.Cell(rowNum, "Y").Value = qarsafariGroupeds[r].OverlapCadCode;
+                        worksheet.Cell(rowNum, "Z").Value = qarsafariGroupeds[r].Owner;
+                        worksheet.Cell(rowNum, "AA").Value = qarsafariGroupeds[r].LegalPerson;
+                        worksheet.Cell(rowNum, "AB").Value = qarsafariGroupeds[r].Owners;
+                        worksheet.Cell(rowNum, "AC").Value = qarsafariGroupeds[r].LandFieldOperator;
+                        worksheet.Cell(rowNum, "AD").Value = qarsafariGroupeds[r].Note1;
+                        worksheet.Cell(rowNum, "AE").Value = qarsafariGroupeds[r].Date2;
+                        worksheet.Cell(rowNum, "AF").Value = qarsafariGroupeds[r].LandGisOperator;
+                        worksheet.Cell(rowNum, "AG").Value = qarsafariGroupeds[r].Note11;
+                        worksheet.Cell(rowNum, "AH").Value = qarsafariGroupeds[r].Date3;
+                        worksheet.Cell(rowNum, "AI").Value = qarsafariGroupeds[r].CadCod;
+                        worksheet.Cell(rowNum, "AJ").Value = qarsafariGroupeds[r].UniqIdOld;
+                        worksheet.Cell(rowNum, "AK").Value = qarsafariGroupeds[r].UniqIdNew;
+                        worksheet.Cell(rowNum, "AL").Value = qarsafariGroupeds[r].Uid;
+                        worksheet.Cell(rowNum, "AM").Value = qarsafariGroupeds[r].Id;
+
+                        string uniqIdGadanomrili = qarsafariGroupeds[r].UniqId.ToString();
+                        if (accessData.ContainsKey(uniqIdGadanomrili))
+                        {
+                            worksheet.Cell(rowNum, "AN").Value = accessData[uniqIdGadanomrili];
+                        }
                     }
+                    
+                    workbook.SaveAs(ExcelDestinationPath + $"\\{ExcelName}.xlsx");
                 }
-                ExcelWorkBook.Worksheets[1].Name = "პატარა-ექსელი"; // ვარქმევთ ჩვენ მიერ ზევით შექმნილ შიტს სახელს 
-                ExcelWorkBook.SaveAs(ExcelDestinationPath + $"\\{ExcelName}.xlsx"); // ვაძლევთ სახელს ექსელის ფაილს ჩვენ მიერ გადმოწოდებული ცვლადის მიხედვით 
-                ExcelWorkBook.Close(); // იხურება ექსელის ფაილი ვეღარ მოვახდენთ მასზე ცვლილებას 
-                ExcelApp.Quit(); //გამოვდივართ აპლიკაციიდან 
-
-                Marshal.ReleaseComObject(ExcelWorkSheet);
-                Marshal.ReleaseComObject(ExcelWorkBook);
-                Marshal.ReleaseComObject(ExcelApp);
 
                 return new Result<bool>
                 {
                     Success = true,
                     StatusCode = System.Net.HttpStatusCode.OK
                 };
-
             }
             catch (Exception ex)
             {
-                ExcelWorkBook.Close(); // იხურება ექსელის ფაილი ვეღარ მოვახდენთ მასზე ცვლილებას 
-                ExcelApp.Quit(); //გამოვდივართ აპლიკაციიდან 
                 return new Result<bool>
                 {
                     Success = false,
@@ -2103,142 +1997,124 @@ namespace GeographicDynamic_DAL.Models.WindbreakMethods
 
             GeographicDynamicDbContext geographicDynamicDbContext = new GeographicDynamicDbContext(); //უკავშირდება კონტექსტს რომ გაიგოს ცხრილები SQL-დან 
 
-            Microsoft.Office.Interop.Excel.Application ExcelApp = new Microsoft.Office.Interop.Excel.Application(); //იქმნება აპლიკაცია წინასწარ 
-            Workbook ExcelWorkBook = null; // წინასწარ იქმნება ვორკბუკის ცვლადი რომ შემდეგში გამოვიყენოთ 
-            Worksheet ExcelWorkSheet = null; // ასევე წინასწარ იქმნება შიტის ცვლადი რომ გამოვიყენოთ შემდეგ 
-            ExcelApp.Visible = false; // აქ ვანიჭებთ ექსელის ფანჯარას რომ გამოჩნდეს პროგრამის მსვლელობა 
-            ExcelWorkBook = ExcelApp.Workbooks.Add(XlWBATemplate.xlWBATWorksheet);  // იქმნება ახალი ექსელის workbook რომელშიც გვაქ ერთი შიტი და ამ შიტს ვიყენებთ სამომავლოდ 
-
             try
             {
-                ExcelWorkSheet = ExcelWorkBook.Worksheets[1]; // აქ ვირჩევთ სამუშაო შიტს ვორკბუკიდან(ექსელიდან) ჩვენ შემთხვევაში ერთია და მაგიტომ გვაქ Worksheets[1} ინდექსად 1 
-
-
-                // ამ კოდის ფრაგმენტებში ივსება სათაურის ველები სხვა სიტყვებით რომ ვთქვათ პირველ row-ში იწერება მნიშვნელობები რამდენი სვეტიც გვაქ (column) 
-                ExcelWorkSheet.Cells[1, "A"] = "UNIQ_ID";
-                ExcelWorkSheet.Cells[1, "B"] = "Liter_ID";
-                ExcelWorkSheet.Cells[1, "C"] = "Photo_N";
-                //ExcelWorkSheet.Cells[1, "C"].EntireColumn.NumberFormat = "@";//ფორმატტდება დეითის ველის ტიპი ტექსტად
-                ExcelWorkSheet.Cells[1, "D"] = "REGION";
-                ExcelWorkSheet.Cells[1, "E"] = "Municipality";
-                ExcelWorkSheet.Cells[1, "F"] = "Adm_Mun";
-                ExcelWorkSheet.Cells[1, "G"] = "City_Town_Village";
-                ExcelWorkSheet.Cells[1, "H"] = "Land_Area_Sq_m";
-                ExcelWorkSheet.Cells[1, "I"] = "Land_Area_Ha";
-                ExcelWorkSheet.Cells[1, "J"] = "shrubbery";
-                ExcelWorkSheet.Cells[1, "K"] = "Woody_plant_percent";
-                ExcelWorkSheet.Cells[1, "L"] = "Woody_plant_quantity";
-                ExcelWorkSheet.Cells[1, "M"] = "VarjisFarti";
-                ExcelWorkSheet.Cells[1, "N"] = "woody_plant_species";
-                ExcelWorkSheet.Cells[1, "O"] = "In_good_condition";
-                ExcelWorkSheet.Cells[1, "P"] = "chopped_down";
-                ExcelWorkSheet.Cells[1, "Q"] = "rampike";
-                ExcelWorkSheet.Cells[1, "R"] = "species_medium_age";
-                ExcelWorkSheet.Cells[1, "S"] = "Note_";
-                ExcelWorkSheet.Cells[1, "T"] = "Company";
-                ExcelWorkSheet.Cells[1, "U"] = "Field_Operator";
-                ExcelWorkSheet.Cells[1, "V"] = "Date_";
-                ExcelWorkSheet.Cells[1, "V"].EntireColumn.NumberFormat = "@";//ფორმატტდება დეითის ველის ტიპი ტექსტად
-                ExcelWorkSheet.Cells[1, "W"] = "Gis_Operator";
-                ExcelWorkSheet.Cells[1, "X"] = "DaTe_1";
-                ExcelWorkSheet.Cells[1, "X"].EntireColumn.NumberFormat = "@";//ფორმატტდება დეითის ველის ტიპი ტექსტად
-                ExcelWorkSheet.Cells[1, "Y"] = "Overlap_CAD_CODE";
-                ExcelWorkSheet.Cells[1, "Z"] = "Owner";
-                ExcelWorkSheet.Cells[1, "AA"] = "Legal_person";
-                ExcelWorkSheet.Cells[1, "AB"] = "Owners";
-                ExcelWorkSheet.Cells[1, "AC"] = "Land_Field_Operator";
-                ExcelWorkSheet.Cells[1, "AD"] = "Note1";
-                ExcelWorkSheet.Cells[1, "AE"] = "Date_2";
-                ExcelWorkSheet.Cells[1, "AF"] = "Land_Gis_Operator";
-                ExcelWorkSheet.Cells[1, "AG"] = "Note1_1";
-                ExcelWorkSheet.Cells[1, "AH"] = "Date_3";
-                ExcelWorkSheet.Cells[1, "AI"] = "CAD_COD";
-                ExcelWorkSheet.Cells[1, "AJ"] = "UNIQ_ID_OLD";
-                ExcelWorkSheet.Cells[1, "AK"] = "UNIQ_ID_NEW";
-                ExcelWorkSheet.Cells[1, "AL"] = "UID";
-                ExcelWorkSheet.Cells[1, "AM"] = "ID";
-                ExcelWorkSheet.Cells[1, "AN"] = "Uniq_Id_NEW";
-
-                for (var r = 0; r < newQarsafari.Count(); r++) // კეთდება ციკლი იმისთვის რო დაიაროს სათითაო ველი და ჩაიწეროს ექსელის შიტში 
-                                                               // R ამ შემთხვევაში ნიშნავს RowNumbers რომ ჩაწერა დაიწყოს მეროე რიგიდან რადგან პირველიში სვეტების სახელები წერია 
-                                                               // ყოველ იტერაციაზე R-ს ერთი ემატება რის გამოც შემდეგ რიგში გადადის ინფორმაციის შევსება 
+                using (var workbook = new XLWorkbook())
                 {
+                    var worksheet = workbook.Worksheets.Add("პატარა-ექსელი");
 
-                    QarsafariGrouped qarsafariGrouped = geographicDynamicDbContext.QarsafariGroupeds.FirstOrDefault(x => x.UniqIdOld == newQarsafari[r].UniqId);
-                    // ციკლის შიგნით იწერება რომელ სვეტში რა ინფორმაცია ჩაიწეროს 
+                    // ამ კოდის ფრაგმენტებში ივსება სათაურის ველები სხვა სიტყვებით რომ ვთქვათ პირველ row-ში იწერება მნიშვნელობები რამდენი სვეტიც გვაქ (column) 
+                    worksheet.Cell(1, "A").Value = "UNIQ_ID";
+                    worksheet.Cell(1, "B").Value = "Liter_ID";
+                    worksheet.Cell(1, "C").Value = "Photo_N";
+                    worksheet.Cell(1, "D").Value = "REGION";
+                    worksheet.Cell(1, "E").Value = "Municipality";
+                    worksheet.Cell(1, "F").Value = "Adm_Mun";
+                    worksheet.Cell(1, "G").Value = "City_Town_Village";
+                    worksheet.Cell(1, "H").Value = "Land_Area_Sq_m";
+                    worksheet.Cell(1, "I").Value = "Land_Area_Ha";
+                    worksheet.Cell(1, "J").Value = "shrubbery";
+                    worksheet.Cell(1, "K").Value = "Woody_plant_percent";
+                    worksheet.Cell(1, "L").Value = "Woody_plant_quantity";
+                    worksheet.Cell(1, "M").Value = "VarjisFarti";
+                    worksheet.Cell(1, "N").Value = "woody_plant_species";
+                    worksheet.Cell(1, "O").Value = "In_good_condition";
+                    worksheet.Cell(1, "P").Value = "chopped_down";
+                    worksheet.Cell(1, "Q").Value = "rampike";
+                    worksheet.Cell(1, "R").Value = "species_medium_age";
+                    worksheet.Cell(1, "S").Value = "Note_";
+                    worksheet.Cell(1, "T").Value = "Company";
+                    worksheet.Cell(1, "U").Value = "Field_Operator";
+                    worksheet.Cell(1, "V").Value = "Date_";
+                    worksheet.Column("V").Style.NumberFormat.Format = "@";//ფორმატტდება დეითის ველის ტიპი ტექსტად
+                    worksheet.Cell(1, "W").Value = "Gis_Operator";
+                    worksheet.Cell(1, "X").Value = "DaTe_1";
+                    worksheet.Column("X").Style.NumberFormat.Format = "@";//ფორმატტდება დეითის ველის ტიპი ტექსტად
+                    worksheet.Cell(1, "Y").Value = "Overlap_CAD_CODE";
+                    worksheet.Cell(1, "Z").Value = "Owner";
+                    worksheet.Cell(1, "AA").Value = "Legal_person";
+                    worksheet.Cell(1, "AB").Value = "Owners";
+                    worksheet.Cell(1, "AC").Value = "Land_Field_Operator";
+                    worksheet.Cell(1, "AD").Value = "Note1";
+                    worksheet.Cell(1, "AE").Value = "Date_2";
+                    worksheet.Cell(1, "AF").Value = "Land_Gis_Operator";
+                    worksheet.Cell(1, "AG").Value = "Note1_1";
+                    worksheet.Cell(1, "AH").Value = "Date_3";
+                    worksheet.Cell(1, "AI").Value = "CAD_COD";
+                    worksheet.Cell(1, "AJ").Value = "UNIQ_ID_OLD";
+                    worksheet.Cell(1, "AK").Value = "UNIQ_ID_NEW";
+                    worksheet.Cell(1, "AL").Value = "UID";
+                    worksheet.Cell(1, "AM").Value = "ID";
+                    worksheet.Cell(1, "AN").Value = "Uniq_Id_NEW";
 
-                    ExcelWorkSheet.Cells[r + 2, "A"] = newQarsafari[r].UniqId;
-                    ExcelWorkSheet.Cells[r + 2, "B"] = newQarsafari[r].LiterId;
-                    ExcelWorkSheet.Cells[r + 2, "C"] = newQarsafari[r].PhotoN;
-                    ExcelWorkSheet.Cells[r + 2, "D"] = newQarsafari[r].Region;
-                    ExcelWorkSheet.Cells[r + 2, "E"] = newQarsafari[r].Municipality;
-                    ExcelWorkSheet.Cells[r + 2, "F"] = newQarsafari[r].AdmMun;
-                    ExcelWorkSheet.Cells[r + 2, "G"] = newQarsafari[r].CityTownVillage;
-                    ExcelWorkSheet.Cells[r + 2, "H"] = newQarsafari[r].LandAreaSqM;
-                    ExcelWorkSheet.Cells[r + 2, "I"] = newQarsafari[r].LandAreaHa;
-                    ExcelWorkSheet.Cells[r + 2, "J"] = newQarsafari[r].Shrubbery;
-                    ExcelWorkSheet.Cells[r + 2, "K"] = newQarsafari[r].WoodyPlantPercent;
-                    ExcelWorkSheet.Cells[r + 2, "L"] = newQarsafari[r].WoodyPlantQuantity;
-                    ExcelWorkSheet.Cells[r + 2, "M"] = newQarsafari[r].VarjisFarti;
-                    ExcelWorkSheet.Cells[r + 2, "N"] = newQarsafari[r].WoodyPlantSpecies;
-
-                    // სადაც სახეობა არ გვიწერია და ხეხილის რაოდენობა იქ იწერება კარგ მდომარეობაში 0 
-                    if (newQarsafari[r].WoodyPlantQuantity == 0)
+                    for (var r = 0; r < newQarsafari.Count(); r++)
                     {
-                        ExcelWorkSheet.Cells[r + 2, "O"] = 0;
-                        ExcelWorkSheet.Cells[r + 2, "P"] = 0;
-                        ExcelWorkSheet.Cells[r + 2, "Q"] = 0;
+                        QarsafariGrouped qarsafariGrouped = geographicDynamicDbContext.QarsafariGroupeds.FirstOrDefault(x => x.UniqIdOld == newQarsafari[r].UniqId);
+                        int rowNum = r + 2;
+
+                        worksheet.Cell(rowNum, "A").Value = newQarsafari[r].UniqId;
+                        worksheet.Cell(rowNum, "B").Value = newQarsafari[r].LiterId;
+                        worksheet.Cell(rowNum, "C").Value = newQarsafari[r].PhotoN;
+                        worksheet.Cell(rowNum, "D").Value = newQarsafari[r].Region;
+                        worksheet.Cell(rowNum, "E").Value = newQarsafari[r].Municipality;
+                        worksheet.Cell(rowNum, "F").Value = newQarsafari[r].AdmMun;
+                        worksheet.Cell(rowNum, "G").Value = newQarsafari[r].CityTownVillage;
+                        worksheet.Cell(rowNum, "H").Value = newQarsafari[r].LandAreaSqM;
+                        worksheet.Cell(rowNum, "I").Value = newQarsafari[r].LandAreaHa;
+                        worksheet.Cell(rowNum, "J").Value = newQarsafari[r].Shrubbery;
+                        worksheet.Cell(rowNum, "K").Value = newQarsafari[r].WoodyPlantPercent;
+                        worksheet.Cell(rowNum, "L").Value = newQarsafari[r].WoodyPlantQuantity;
+                        worksheet.Cell(rowNum, "M").Value = newQarsafari[r].VarjisFarti;
+                        worksheet.Cell(rowNum, "N").Value = newQarsafari[r].WoodyPlantSpecies;
+
+                        if (newQarsafari[r].WoodyPlantQuantity == 0)
+                        {
+                            worksheet.Cell(rowNum, "O").Value = 0;
+                            worksheet.Cell(rowNum, "P").Value = 0;
+                            worksheet.Cell(rowNum, "Q").Value = 0;
+                        }
+                        else
+                        {
+                            worksheet.Cell(rowNum, "O").Value = Math.Round(Convert.ToDouble(newQarsafari[r].InGoodCondition ?? 0), 1);
+                            worksheet.Cell(rowNum, "P").Value = Math.Round(Convert.ToDouble(newQarsafari[r].ChoppedDown ?? 0), 1);
+                            worksheet.Cell(rowNum, "Q").Value = Math.Round(Convert.ToDouble(newQarsafari[r].Rampike ?? 0), 1);
+                        }
+                        worksheet.Cell(rowNum, "R").Value = newQarsafari[r].SpeciesMediumAge;
+                        worksheet.Cell(rowNum, "S").Value = newQarsafari[r].Note;
+                        worksheet.Cell(rowNum, "T").Value = newQarsafari[r].Company;
+                        worksheet.Cell(rowNum, "U").Value = newQarsafari[r].FieldOperator;
+                        worksheet.Cell(rowNum, "V").Value = newQarsafari[r].Date;
+                        worksheet.Cell(rowNum, "W").Value = newQarsafari[r].GisOperator;
+                        worksheet.Cell(rowNum, "X").Value = newQarsafari[r].DaTe1;
+                        worksheet.Cell(rowNum, "Y").Value = newQarsafari[r].OverlapCadCode;
+                        worksheet.Cell(rowNum, "Z").Value = newQarsafari[r].Owner;
+                        worksheet.Cell(rowNum, "AA").Value = newQarsafari[r].LegalPerson;
+                        worksheet.Cell(rowNum, "AB").Value = newQarsafari[r].Owners;
+                        worksheet.Cell(rowNum, "AC").Value = newQarsafari[r].LandFieldOperator;
+                        worksheet.Cell(rowNum, "AD").Value = newQarsafari[r].Note1;
+                        worksheet.Cell(rowNum, "AE").Value = newQarsafari[r].Date2;
+                        worksheet.Cell(rowNum, "AF").Value = newQarsafari[r].LandGisOperator;
+                        worksheet.Cell(rowNum, "AG").Value = newQarsafari[r].Note11;
+                        worksheet.Cell(rowNum, "AH").Value = newQarsafari[r].Date3;
+                        worksheet.Cell(rowNum, "AI").Value = newQarsafari[r].CadCod;
+                        worksheet.Cell(rowNum, "AJ").Value = newQarsafari[r].UniqIdOld;
+                        worksheet.Cell(rowNum, "AK").Value = newQarsafari[r].UniqIdNew;
+                        worksheet.Cell(rowNum, "AL").Value = newQarsafari[r].Uid;
+                        worksheet.Cell(rowNum, "AM").Value = newQarsafari[r].Id;
+                        worksheet.Cell(rowNum, "AN").Value = qarsafariGrouped?.UniqId;
                     }
-                    else
-                    {
-                        ExcelWorkSheet.Cells[r + 2, "O"] = Math.Round(Convert.ToDouble(newQarsafari[r].InGoodCondition), 1);
-                        ExcelWorkSheet.Cells[r + 2, "P"] = Math.Round(Convert.ToDouble(newQarsafari[r].ChoppedDown), 1);
-                        ExcelWorkSheet.Cells[r + 2, "Q"] = Math.Round(Convert.ToDouble(newQarsafari[r].Rampike), 1);
-                    }
-                    ExcelWorkSheet.Cells[r + 2, "R"] = newQarsafari[r].SpeciesMediumAge;
-                    ExcelWorkSheet.Cells[r + 2, "S"] = newQarsafari[r].Note;
-                    ExcelWorkSheet.Cells[r + 2, "T"] = newQarsafari[r].Company;
-                    ExcelWorkSheet.Cells[r + 2, "U"] = newQarsafari[r].FieldOperator;
-                    ExcelWorkSheet.Cells[r + 2, "V"] = newQarsafari[r].Date;
-                    ExcelWorkSheet.Cells[r + 2, "W"] = newQarsafari[r].GisOperator;
-                    ExcelWorkSheet.Cells[r + 2, "X"] = newQarsafari[r].DaTe1;
-                    ExcelWorkSheet.Cells[r + 2, "Y"] = newQarsafari[r].OverlapCadCode;
-                    ExcelWorkSheet.Cells[r + 2, "Z"] = newQarsafari[r].Owner;
-                    ExcelWorkSheet.Cells[r + 2, "AA"] = newQarsafari[r].LegalPerson;
-                    ExcelWorkSheet.Cells[r + 2, "AB"] = newQarsafari[r].Owners;
-                    ExcelWorkSheet.Cells[r + 2, "AC"] = newQarsafari[r].LandFieldOperator;
-                    ExcelWorkSheet.Cells[r + 2, "AD"] = newQarsafari[r].Note1;
-                    ExcelWorkSheet.Cells[r + 2, "AE"] = newQarsafari[r].Date2;
-                    ExcelWorkSheet.Cells[r + 2, "AF"] = newQarsafari[r].LandGisOperator;
-                    ExcelWorkSheet.Cells[r + 2, "AG"] = newQarsafari[r].Note11;
-                    ExcelWorkSheet.Cells[r + 2, "AH"] = newQarsafari[r].Date3;
-                    ExcelWorkSheet.Cells[r + 2, "AI"] = newQarsafari[r].CadCod;
-                    ExcelWorkSheet.Cells[r + 2, "AJ"] = newQarsafari[r].UniqIdOld;
-                    ExcelWorkSheet.Cells[r + 2, "AK"] = newQarsafari[r].UniqIdNew;
-                    ExcelWorkSheet.Cells[r + 2, "AL"] = newQarsafari[r].Uid;
-                    ExcelWorkSheet.Cells[r + 2, "AM"] = newQarsafari[r].Id;
-                    ExcelWorkSheet.Cells[r + 2, "AN"] = qarsafariGrouped.UniqId;
+                    
+                    workbook.SaveAs(ExcelDestinationPath + "rootExcel.xlsx");
                 }
-                ExcelWorkBook.Worksheets[1].Name = "პატარა-ექსელი"; // ვარქმევთ ჩვენ მიერ ზევით შექმნილ შიტს სახელს 
-                ExcelWorkBook.SaveAs(ExcelDestinationPath + "rootExcel.xlsx"); // ვაძლევთ სახელს ექსელის ფაილს ჩვენ მიერ გადმოწოდებული ცვლადის მიხედვით 
-                ExcelWorkBook.Close(); // იხურება ექსელის ფაილი ვეღარ მოვახდენთ მასზე ცვლილებას 
-                ExcelApp.Quit(); //გამოვდივართ აპლიკაციიდან 
-
-                Marshal.ReleaseComObject(ExcelWorkSheet);
-                Marshal.ReleaseComObject(ExcelWorkBook);
-                Marshal.ReleaseComObject(ExcelApp);
 
                 return new Result<bool>
                 {
                     Success = true,
                     StatusCode = System.Net.HttpStatusCode.OK
                 };
-
             }
             catch (Exception ex)
             {
-                ExcelWorkBook.Close(); // იხურება ექსელის ფაილი ვეღარ მოვახდენთ მასზე ცვლილებას 
-                ExcelApp.Quit(); //გამოვდივართ აპლიკაციიდან 
                 return new Result<bool>
                 {
                     Success = false,
@@ -2274,104 +2150,112 @@ namespace GeographicDynamic_DAL.Models.WindbreakMethods
                 // Copy the file to the destination folder
                 File.Copy(ExcelPath, destinationFilePath, true); // 'true' to overwrite if the file already exists
 
-                // Open the copied Excel file and modify it using Interop
-                Application excelApp = new Application();
-                Workbook workbook = excelApp.Workbooks.Open(destinationFilePath);
-                _Worksheet worksheet = workbook.Sheets[1]; // Assuming there is only one sheet
-                Microsoft.Office.Interop.Excel.Range excelRange = worksheet.UsedRange;
-
-                // Find the column index for "Uniq_Id_New"
-                int column = 1;
-                while (worksheet.Cells[1, column].Value != null && worksheet.Cells[1, column].Value.ToString() != "Uniq_Id_New")
+                // Open the copied Excel file and modify it using ClosedXML
+                using (var workbook = new XLWorkbook(destinationFilePath))
                 {
-                    column++;
-                }
+                    var worksheet = workbook.Worksheet(1);
 
-                if (worksheet.Cells[1, column].Value == null)
-                {
-                    // If "Uniq_Id_New" header does not exist, add it
-                    worksheet.Cells[1, column].Value = "Uniq_Id_New";
-                }
-
-                // Find the column index for "Uniq_Id_MDB"
-                while (worksheet.Cells[1, column+1].Value != null && worksheet.Cells[1, column+1].Value.ToString() != "Uniq_Id_MDB")
-                {
-                    column++;
-                }
-
-                if (worksheet.Cells[1, column + 1].Value == null)
-                {
-                    // If "Uniq_Id_MDB" header does not exist, add it
-                    worksheet.Cells[1, column + 1].Value = "Uniq_Id_MDB";
-                }
-
-                // Read Excel data into a dictionary for faster lookup
-                Dictionary<string, string> excelData = new Dictionary<string, string>();
-                int rowCount = worksheet.UsedRange.Rows.Count;
-                for (int i = 2; i <= rowCount; i++) // Assuming data starts from row 2
-                {
-                    string uniqId = worksheet.Cells[i, 1]?.Value?.ToString();
-                    string litterId = worksheet.Cells[i, 2]?.Value?.ToString();
-
-                    // Only add to dictionary if both uniqId and litterId are not null
-                    if (!string.IsNullOrEmpty(uniqId) && !string.IsNullOrEmpty(litterId))
+                    // Find the column index for "Uniq_Id_New"
+                    int column = 1;
+                    var headerRow = worksheet.FirstRow();
+                    while (column <= 100) // reasonable limit
                     {
-                        excelData.Add($"{uniqId}_{litterId}", worksheet.Cells[i, column]?.Value?.ToString() ?? "");
-                    }
-                }
-
-                // Fetch data from database
-                var dbData = geographicDynamicDbContext.QarsafariGroupeds.ToList();
-
-                // Update Excel with fetched data
-                for (int i = 2; i <= rowCount; i++)
-                {
-                    string excelUniqId = worksheet.Cells[i, 1]?.Value?.ToString();
-                    string excelLitterId = worksheet.Cells[i, 2]?.Value?.ToString();
-
-                    if (!string.IsNullOrEmpty(excelUniqId) && !string.IsNullOrEmpty(excelLitterId))
-                    {
-                        var matchedData = dbData.FirstOrDefault(item =>
-                            item.UniqIdOld.ToString() == excelUniqId &&
-                            item.LiterId.ToString() == excelLitterId);
-
-                        if (matchedData != null)
+                        var cellValue = headerRow.Cell(column).GetValue<string>();
+                        if (string.IsNullOrEmpty(cellValue))
                         {
-                            // Write new uniqId from DB
-                            worksheet.Cells[i, column].Value = matchedData.UniqId;
+                            // If "Uniq_Id_New" header does not exist, add it
+                            headerRow.Cell(column).Value = "Uniq_Id_New";
+                            break;
+                        }
+                        if (cellValue == "Uniq_Id_New")
+                        {
+                            break;
+                        }
+                        column++;
+                    }
 
-                            // Find corresponding MDB value safely
-                            //var match = excelDataList
-                            //    .FirstOrDefault(m => m.Uniq_ID_gadanomrili == matchedData.UniqId.ToString());
+                    // Find the column index for "Uniq_Id_MDB"
+                    int mdbColumn = column + 1;
+                    while (mdbColumn <= 100)
+                    {
+                        var cellValue = headerRow.Cell(mdbColumn).GetValue<string>();
+                        if (string.IsNullOrEmpty(cellValue))
+                        {
+                            // If "Uniq_Id_MDB" header does not exist, add it
+                            headerRow.Cell(mdbColumn).Value = "Uniq_Id_MDB";
+                            break;
+                        }
+                        if (cellValue == "Uniq_Id_MDB")
+                        {
+                            break;
+                        }
+                        mdbColumn++;
+                    }
 
-                            var match = excelDataList.FirstOrDefault(m =>
-                                        m.Uniq_ID_gadanomrili == matchedData.UniqId.ToString() &&
-                                        m.Litter_Id == matchedData.LiterId.ToString());
+                    // Read Excel data into a dictionary for faster lookup
+                    Dictionary<string, string> excelData = new Dictionary<string, string>();
+                    var lastRow = worksheet.LastRowUsed();
+                    int rowCount = lastRow != null ? lastRow.RowNumber() : 0;
+                    
+                    for (int i = 2; i <= rowCount; i++) // Assuming data starts from row 2
+                    {
+                        var row = worksheet.Row(i);
+                        string uniqId = row.Cell(1).GetValue<string>();
+                        string litterId = row.Cell(2).GetValue<string>();
 
-                            if (match != null)
+                        // Only add to dictionary if both uniqId and litterId are not null
+                        if (!string.IsNullOrEmpty(uniqId) && !string.IsNullOrEmpty(litterId))
+                        {
+                            excelData.Add($"{uniqId}_{litterId}", row.Cell(column).GetValue<string>() ?? "");
+                        }
+                    }
+
+                    // Fetch data from database
+                    var dbData = geographicDynamicDbContext.QarsafariGroupeds.ToList();
+
+                    // Update Excel with fetched data
+                    for (int i = 2; i <= rowCount; i++)
+                    {
+                        var row = worksheet.Row(i);
+                        string excelUniqId = row.Cell(1).GetValue<string>();
+                        string excelLitterId = row.Cell(2).GetValue<string>();
+
+                        if (!string.IsNullOrEmpty(excelUniqId) && !string.IsNullOrEmpty(excelLitterId))
+                        {
+                            var matchedData = dbData.FirstOrDefault(item =>
+                                item.UniqIdOld.ToString() == excelUniqId &&
+                                item.LiterId.ToString() == excelLitterId);
+
+                            if (matchedData != null)
                             {
-                                worksheet.Cells[i, column + 1].Value = match.Uniq_Id_MDB;
+                                // Write new uniqId from DB
+                                row.Cell(column).Value = matchedData.UniqId;
+
+                                var match = excelDataList.FirstOrDefault(m =>
+                                            m.Uniq_ID_gadanomrili == matchedData.UniqId.ToString() &&
+                                            m.Litter_Id == matchedData.LiterId.ToString());
+
+                                if (match != null)
+                                {
+                                    row.Cell(mdbColumn).Value = match.Uniq_Id_MDB;
+                                }
+                                else
+                                {
+                                    // Optional logging in case MDB is missing
+                                    Console.WriteLine($"No MDB match found for row {i}, UniqId: {matchedData.UniqId}");
+                                }
                             }
                             else
                             {
-                                // Optional logging in case MDB is missing
-                                Console.WriteLine($"No MDB match found for row {i}, UniqId: {matchedData.UniqId}");
+                                // Handle rows with no database match
+                                Console.WriteLine($"No DB match found for row {i}, UniqId: {excelUniqId}, LitterId: {excelLitterId}");
                             }
                         }
-                        else
-                        {
-                            // Handle rows with no database match
-                            Console.WriteLine($"No DB match found for row {i}, UniqId: {excelUniqId}, LitterId: {excelLitterId}");
-                        }
                     }
+
+                    // Save changes
+                    workbook.Save();
                 }
-
-
-                // Save changes and cleanup
-                workbook.Save();
-                workbook.Close();
-                excelApp.Quit();
-                Marshal.ReleaseComObject(excelApp);
 
                 result.Success = true;
                 result.StatusCode = System.Net.HttpStatusCode.OK;

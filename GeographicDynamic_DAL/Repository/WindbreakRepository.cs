@@ -7,7 +7,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.Query.Internal;
-using Microsoft.Office.Interop.Excel;
+using ClosedXML.Excel;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -16,7 +16,6 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using static Azure.Core.HttpHeader;
@@ -187,38 +186,25 @@ namespace GeographicDynamic_DAL.Repository
 
                 void WriteToExcel(List<string> UnMatchedPhotos, string ForExcelName)
                 {
-                    Microsoft.Office.Interop.Excel.Application ExcelApp = new Microsoft.Office.Interop.Excel.Application();
-                    Workbook ExcelWorkBook = null;
-                    Worksheet ExcelWorkSheet = null;
-
-                    // Set Excel application to not be visible
-                    ExcelApp.Visible = true;
-
-
-                    ExcelWorkBook = ExcelApp.Workbooks.Add(XlWBATemplate.xlWBATWorksheet);
-
-                    ExcelWorkBook.Worksheets.Add(); //Adding New Sheet in Excel Workbook
-
                     try
                     {
-                        ExcelWorkSheet = ExcelWorkBook.Worksheets[1]; // Compulsory Line in which sheet you want to write data
-                                                                      //Writing data into excel of 100 rows with 10 column 
-                        ExcelWorkSheet.Cells[1, "A"] = "შეცდომები";
-                        //ExcelWorkSheet.Cells[1, "B"] = "UNIQ_ID";
-                        for (int r = 0; r < UnMatchedPhotos.Count(); r++) //r stands for ExcelRow and c for ExcelColumn
+                        using (var workbook = new XLWorkbook())
                         {
-                            string[] parts = UnMatchedPhotos[r].Split('/');
-                            ExcelWorkSheet.Cells[r + 2, "A"] = string.Concat(parts);
-                            //ExcelWorkSheet.Cells[r + 2, "B"] = parts[1];
-
+                            var worksheet = workbook.Worksheets.Add("ResultSheet");
+                            
+                            //Writing data into excel
+                            worksheet.Cell(1, "A").Value = "შეცდომები";
+                            //worksheet.Cell(1, "B").Value = "UNIQ_ID";
+                            
+                            for (int r = 0; r < UnMatchedPhotos.Count(); r++) //r stands for ExcelRow and c for ExcelColumn
+                            {
+                                string[] parts = UnMatchedPhotos[r].Split('/');
+                                worksheet.Cell(r + 2, "A").Value = string.Concat(parts);
+                                //worksheet.Cell(r + 2, "B").Value = parts[1];
+                            }
+                            
+                            workbook.SaveAs(resultPath + "\\Results-" + ForExcelName + ".xlsx");
                         }
-                        ExcelWorkBook.Worksheets[1].Name = "ResultSheet";//Renaming the Sheet1 to MySheet
-                        ExcelWorkBook.SaveAs(resultPath + "\\Results-" + ForExcelName + ".xlsx");
-                        // ExcelWorkBook.Close();
-                        // ExcelApp.Quit();
-                        Marshal.ReleaseComObject(ExcelWorkSheet);
-                        Marshal.ReleaseComObject(ExcelWorkBook);
-                        Marshal.ReleaseComObject(ExcelApp);
 
                         //Process.Start(resultPath + "\\Results-" + ForExcelName + ".xlsx");
                         //Process.Start(new ProcessStartInfo { FileName = @"${resultPath}\\Results-{ForExcelName}.xlsx", UseShellExecute = true });
