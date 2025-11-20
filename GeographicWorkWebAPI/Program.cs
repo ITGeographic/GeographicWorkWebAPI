@@ -40,6 +40,7 @@ builder.Services.AddCors(options =>
 builder.Services.AddTransient<DictionaryDTO>();
 builder.Services.AddTransient<IVarjisFarti, VarjisFartiRepository>();
 builder.Services.AddTransient<IWindbreak, WindbreakRepository>();
+builder.Services.AddTransient<IWindbreakFirstStep, WindbreakFirstStepRepository>();
 builder.Services.AddTransient<IColumnName, ColumnNameRepository>();
 builder.Services.AddTransient<IChromeBot, ChromeBotRepository>();
 builder.Services.AddAutoMapper(typeof(MapperConfig));
