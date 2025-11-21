@@ -9,6 +9,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.OleDb;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Reflection;
@@ -125,66 +126,122 @@ namespace GeographicDynamic_DAL.Models.WindbreakMethods
                                 
                                 if (!cell.IsEmpty())
                                 {
-                                    object cellValue = null;
-                                    Type cellType = null;
-                                    
-                                    // Get cell value based on its data type (similar to Interop's Value2)
-                                    if (cell.DataType == XLDataType.Number)
+                                    PropertyInfo propertyInfo = typeof(Qarsafari).GetProperty(columnName.Sqlname);
+                                    if (propertyInfo != null)
                                     {
-                                        cellValue = cell.GetDouble();
-                                        cellType = typeof(double);
-                                    }
-                                    else if (cell.DataType == XLDataType.DateTime)
-                                    {
-                                        cellValue = cell.GetDateTime();
-                                        cellType = typeof(DateTime);
-                                    }
-                                    else if (cell.DataType == XLDataType.Text)
-                                    {
-                                        // Try to parse as number if it's a numeric string
-                                        string textValue = cell.GetString();
-                                        if (double.TryParse(textValue, out double numericValue))
+                                        object cellValue = null;
+                                        
+                                        // Get value based on cell data type
+                                        if (cell.DataType == XLDataType.Number)
                                         {
-                                            cellValue = numericValue;
-                                            cellType = typeof(double);
+                                            cellValue = cell.GetDouble();
                                         }
-                                        else if (DateTime.TryParse(textValue, out DateTime dateValue))
+                                        else if (cell.DataType == XLDataType.Text)
                                         {
-                                            cellValue = dateValue;
-                                            cellType = typeof(DateTime);
+                                            cellValue = cell.GetString();
+                                        }
+                                        else if (cell.DataType == XLDataType.DateTime)
+                                        {
+                                            cellValue = cell.GetDateTime();
+                                        }
+                                        else if (cell.DataType == XLDataType.Boolean)
+                                        {
+                                            cellValue = cell.GetBoolean();
                                         }
                                         else
                                         {
-                                            cellValue = textValue;
-                                            cellType = typeof(string);
+                                            // Try to get as string for other types
+                                            try
+                                            {
+                                                cellValue = cell.GetString();
+                                            }
+                                            catch
+                                            {
+                                                // If string conversion fails, try double
+                                                try
+                                                {
+                                                    cellValue = cell.GetDouble();
+                                                }
+                                                catch
+                                                {
+                                                    // Skip this cell if we can't convert it
+                                                    continue;
+                                                }
+                                            }
                                         }
-                                    }
-                                    else
-                                    {
-                                        // For other types, try to get as string first
-                                        cellValue = cell.GetString();
-                                        cellType = typeof(string);
-                                    }
 
-                                    if (cellValue != null)
-                                    {
-                                        PropertyInfo propertyInfo = typeof(Qarsafari).GetProperty(columnName.Sqlname);
-                                        if (propertyInfo != null)
+                                        if (cellValue != null)
                                         {
-                                            // Handle conversion based on cell type
-                                            if (cellType == typeof(double))
+                                            Type cellType = cellValue.GetType();
+                                            Type propertyType = propertyInfo.PropertyType;
+                                            
+                                            // Handle nullable types
+                                            if (propertyType.IsGenericType && propertyType.GetGenericTypeDefinition() == typeof(Nullable<>))
                                             {
-                                                propertyInfo.SetValue(qarsafari, (double)cellValue);
+                                                propertyType = Nullable.GetUnderlyingType(propertyType);
                                             }
-                                            else if (cellType == typeof(string))
+
+                                            // Handle conversion based on property type
+                                            if (propertyType == typeof(double) || propertyType == typeof(double?))
                                             {
-                                                propertyInfo.SetValue(qarsafari, cellValue);
+                                                if (cellValue is double doubleVal)
+                                                {
+                                                    propertyInfo.SetValue(qarsafari, doubleVal);
+                                                }
+                                                else if (double.TryParse(cellValue.ToString(), out double parsedDouble))
+                                                {
+                                                    propertyInfo.SetValue(qarsafari, parsedDouble);
+                                                }
                                             }
-                                            else if (cellType == typeof(DateTime))
+                                            else if (propertyType == typeof(string))
                                             {
-                                                propertyInfo.SetValue(qarsafari, cellValue);
+                                                propertyInfo.SetValue(qarsafari, cellValue.ToString());
                                             }
-                                            // Add other type conversions as necessary
+                                            else if (propertyType == typeof(DateTime) || propertyType == typeof(DateTime?))
+                                            {
+                                                if (cellValue is DateTime dateTimeVal)
+                                                {
+                                                    propertyInfo.SetValue(qarsafari, dateTimeVal);
+                                                }
+                                                else if (DateTime.TryParse(cellValue.ToString(), out DateTime parsedDateTime))
+                                                {
+                                                    propertyInfo.SetValue(qarsafari, parsedDateTime);
+                                                }
+                                            }
+                                            else if (propertyType == typeof(int) || propertyType == typeof(int?))
+                                            {
+                                                if (cellValue is int intVal)
+                                                {
+                                                    propertyInfo.SetValue(qarsafari, intVal);
+                                                }
+                                                else if (int.TryParse(cellValue.ToString(), out int parsedInt))
+                                                {
+                                                    propertyInfo.SetValue(qarsafari, parsedInt);
+                                                }
+                                                else if (cellValue is double doubleVal && doubleVal == Math.Truncate(doubleVal))
+                                                {
+                                                    propertyInfo.SetValue(qarsafari, (int)doubleVal);
+                                                }
+                                            }
+                                            else if (propertyType == typeof(bool) || propertyType == typeof(bool?))
+                                            {
+                                                if (cellValue is bool boolVal)
+                                                {
+                                                    propertyInfo.SetValue(qarsafari, boolVal);
+                                                }
+                                                else if (bool.TryParse(cellValue.ToString(), out bool parsedBool))
+                                                {
+                                                    propertyInfo.SetValue(qarsafari, parsedBool);
+                                                }
+                                            }
+                                            else
+                                            {
+                                                // Try direct assignment if types match
+                                                if (propertyType.IsAssignableFrom(cellType))
+                                                {
+                                                    propertyInfo.SetValue(qarsafari, cellValue);
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -2038,7 +2095,14 @@ namespace GeographicDynamic_DAL.Models.WindbreakMethods
                         worksheet.Cell(r + 2, "AM").Value = qarsafaris[r].Id;
                     }
 
-                    workbook.SaveAs(Path.Combine(ExcelDestinationPath, $"{ExcelName}.xlsx"));
+                    // Create result folder if it doesn't exist
+                    string resultFolderPath = Path.Combine(ExcelDestinationPath, "result");
+                    if (!Directory.Exists(resultFolderPath))
+                    {
+                        Directory.CreateDirectory(resultFolderPath);
+                    }
+
+                    workbook.SaveAs(Path.Combine(resultFolderPath, $"{ExcelName}.xlsx"));
                 }
 
                 return new Result<bool>
@@ -2243,7 +2307,16 @@ namespace GeographicDynamic_DAL.Models.WindbreakMethods
                         }
                     }
 
-                    workbook.SaveAs(Path.Combine(ExcelDestinationPath, $"{ExcelName}.xlsx"));
+                    // Create result folder if it doesn't exist
+                    string resultFolderPath = Path.Combine(ExcelDestinationPath, "result");
+                    if (!Directory.Exists(resultFolderPath))
+                    {
+                        Directory.CreateDirectory(resultFolderPath);
+                    }
+
+                    workbook.SaveAs(Path.Combine(resultFolderPath, $"{ExcelName}.xlsx"));
+
+                   
                 }
 
                 return new Result<bool>
@@ -2380,7 +2453,14 @@ namespace GeographicDynamic_DAL.Models.WindbreakMethods
                         worksheet.Cell(r + 2, "AN").Value = qarsafariGrouped?.UniqId;
                     }
 
-                    workbook.SaveAs(Path.Combine(ExcelDestinationPath, "rootExcel.xlsx"));
+                    // Create result folder if it doesn't exist
+                    string resultFolderPath = Path.Combine(ExcelDestinationPath, "result");
+                    if (!Directory.Exists(resultFolderPath))
+                    {
+                        Directory.CreateDirectory(resultFolderPath);
+                    }
+
+                    workbook.SaveAs(Path.Combine(resultFolderPath, "rootExcel.xlsx"));
                 }
 
                 return new Result<bool>
@@ -2549,6 +2629,40 @@ namespace GeographicDynamic_DAL.Models.WindbreakMethods
             }
 
             return result;
+        }
+
+        // Helper method to copy directory recursively
+        private void CopyDirectory(string sourceDir, string destinationDir, bool recursive)
+        {
+            // Get information about the source directory
+            var dir = new DirectoryInfo(sourceDir);
+
+            // Check if the source directory exists
+            if (!dir.Exists)
+                throw new DirectoryNotFoundException($"Source directory not found: {dir.FullName}");
+
+            // Cache directories before we start copying
+            DirectoryInfo[] dirs = dir.GetDirectories();
+
+            // Create the destination directory
+            Directory.CreateDirectory(destinationDir);
+
+            // Get the files in the source directory and copy to the destination directory
+            foreach (FileInfo file in dir.GetFiles())
+            {
+                string targetFilePath = Path.Combine(destinationDir, file.Name);
+                file.CopyTo(targetFilePath, true);
+            }
+
+            // If recursive and copying subdirectories, recursively call this method
+            if (recursive)
+            {
+                foreach (DirectoryInfo subDir in dirs)
+                {
+                    string newDestinationDir = Path.Combine(destinationDir, subDir.Name);
+                    CopyDirectory(subDir.FullName, newDestinationDir, true);
+                }
+            }
         }
 
 

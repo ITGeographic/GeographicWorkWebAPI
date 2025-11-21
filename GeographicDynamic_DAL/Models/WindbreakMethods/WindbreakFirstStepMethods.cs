@@ -9,6 +9,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.OleDb;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -105,8 +106,10 @@ namespace GeographicDynamic_DAL.Models.WindbreakFirstStepMethods
                         var row = worksheet.Row(i);
 
                         // თუ უნიკიდ ან ლიტერ აიდი ცარიელია მაშინ ჩაიწერება false თუ არაა ცარიელი მაშინ true
-                        var cellA = row.Cell("A").GetValue<string>();
-                        var cellB = row.Cell("B").GetValue<string>();
+                        var cellACell = row.Cell("A");
+                        var cellBCell = row.Cell("B");
+                        string cellA = cellACell.IsEmpty() ? string.Empty : (cellACell.DataType == XLDataType.Number ? cellACell.GetValue<double>().ToString() : cellACell.GetValue<string>());
+                        string cellB = cellBCell.IsEmpty() ? string.Empty : (cellBCell.DataType == XLDataType.Number ? cellBCell.GetValue<double>().ToString() : cellBCell.GetValue<string>());
                         if (String.IsNullOrEmpty(cellA) || String.IsNullOrEmpty(cellB))
                         {
                             qarsafari.IsUniqLiterNull = "false";
@@ -130,32 +133,122 @@ namespace GeographicDynamic_DAL.Models.WindbreakFirstStepMethods
                                 var cell = row.Cell(columnName.ColN.Value);
                                 if (!cell.IsEmpty())
                                 {
-                                    object cellValue = cell.GetValue<object>();
-                                    if (cellValue != null)
+                                    PropertyInfo propertyInfo = typeof(Qarsafari).GetProperty(columnName.Sqlname);
+                                    if (propertyInfo != null)
                                     {
-                                        Type cellType = cellValue.GetType();
-                                        PropertyInfo propertyInfo = typeof(Qarsafari).GetProperty(columnName.Sqlname);
-                                        if (propertyInfo != null)
+                                        object cellValue = null;
+                                        
+                                        // Get value based on cell data type
+                                        if (cell.DataType == XLDataType.Number)
                                         {
-                                            // Handle conversion based on cell type
-                                            if (cellType == typeof(double))
+                                            cellValue = cell.GetValue<double>();
+                                        }
+                                        else if (cell.DataType == XLDataType.Text)
+                                        {
+                                            cellValue = cell.GetValue<string>();
+                                        }
+                                        else if (cell.DataType == XLDataType.DateTime)
+                                        {
+                                            cellValue = cell.GetValue<DateTime>();
+                                        }
+                                        else if (cell.DataType == XLDataType.Boolean)
+                                        {
+                                            cellValue = cell.GetValue<bool>();
+                                        }
+                                        else
+                                        {
+                                            // Try to get as string for other types
+                                            try
                                             {
-                                                propertyInfo.SetValue(qarsafari, (double)cellValue);
+                                                cellValue = cell.GetValue<string>();
                                             }
-                                            else if (cellType == typeof(string))
+                                            catch
                                             {
-                                                propertyInfo.SetValue(qarsafari, cellValue);
-                                            }
-                                            else if (cellType == typeof(DateTime))
-                                            {
-                                                DateTime dateTimeValue;
-                                                if (DateTime.TryParse((string)cellValue, out dateTimeValue))
+                                                // If string conversion fails, try double
+                                                try
                                                 {
-                                                    propertyInfo.SetValue(qarsafari, dateTimeValue);
+                                                    cellValue = cell.GetValue<double>();
                                                 }
-                                                // Handle DateTime conversion if necessary
+                                                catch
+                                                {
+                                                    // Skip this cell if we can't convert it
+                                                    continue;
+                                                }
                                             }
-                                            // Add other type conversions as necessary
+                                        }
+
+                                        if (cellValue != null)
+                                        {
+                                            Type cellType = cellValue.GetType();
+                                            Type propertyType = propertyInfo.PropertyType;
+                                            
+                                            // Handle nullable types
+                                            if (propertyType.IsGenericType && propertyType.GetGenericTypeDefinition() == typeof(Nullable<>))
+                                            {
+                                                propertyType = Nullable.GetUnderlyingType(propertyType);
+                                            }
+
+                                            // Handle conversion based on property type
+                                            if (propertyType == typeof(double) || propertyType == typeof(double?))
+                                            {
+                                                if (cellValue is double doubleVal)
+                                                {
+                                                    propertyInfo.SetValue(qarsafari, doubleVal);
+                                                }
+                                                else if (double.TryParse(cellValue.ToString(), out double parsedDouble))
+                                                {
+                                                    propertyInfo.SetValue(qarsafari, parsedDouble);
+                                                }
+                                            }
+                                            else if (propertyType == typeof(string))
+                                            {
+                                                propertyInfo.SetValue(qarsafari, cellValue.ToString());
+                                            }
+                                            else if (propertyType == typeof(DateTime) || propertyType == typeof(DateTime?))
+                                            {
+                                                if (cellValue is DateTime dateTimeVal)
+                                                {
+                                                    propertyInfo.SetValue(qarsafari, dateTimeVal);
+                                                }
+                                                else if (DateTime.TryParse(cellValue.ToString(), out DateTime parsedDateTime))
+                                                {
+                                                    propertyInfo.SetValue(qarsafari, parsedDateTime);
+                                                }
+                                            }
+                                            else if (propertyType == typeof(int) || propertyType == typeof(int?))
+                                            {
+                                                if (cellValue is int intVal)
+                                                {
+                                                    propertyInfo.SetValue(qarsafari, intVal);
+                                                }
+                                                else if (int.TryParse(cellValue.ToString(), out int parsedInt))
+                                                {
+                                                    propertyInfo.SetValue(qarsafari, parsedInt);
+                                                }
+                                                else if (cellValue is double doubleVal && doubleVal == Math.Truncate(doubleVal))
+                                                {
+                                                    propertyInfo.SetValue(qarsafari, (int)doubleVal);
+                                                }
+                                            }
+                                            else if (propertyType == typeof(bool) || propertyType == typeof(bool?))
+                                            {
+                                                if (cellValue is bool boolVal)
+                                                {
+                                                    propertyInfo.SetValue(qarsafari, boolVal);
+                                                }
+                                                else if (bool.TryParse(cellValue.ToString(), out bool parsedBool))
+                                                {
+                                                    propertyInfo.SetValue(qarsafari, parsedBool);
+                                                }
+                                            }
+                                            else
+                                            {
+                                                // Try direct assignment if types match
+                                                if (propertyType.IsAssignableFrom(cellType))
+                                                {
+                                                    propertyInfo.SetValue(qarsafari, cellValue);
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -1759,7 +1852,14 @@ namespace GeographicDynamic_DAL.Models.WindbreakFirstStepMethods
                         worksheet.Cell(rowNum, "AM").Value = qarsafaris[r].Id;
                     }
 
-                    workbook.SaveAs(ExcelDestinationPath + $"\\{ExcelName}.xlsx");
+                    // Create result folder if it doesn't exist
+                    string resultFolderPath = Path.Combine(ExcelDestinationPath, "result");
+                    if (!Directory.Exists(resultFolderPath))
+                    {
+                        Directory.CreateDirectory(resultFolderPath);
+                    }
+
+                    workbook.SaveAs(Path.Combine(resultFolderPath, $"{ExcelName}.xlsx"));
                 }
 
                 return new Result<bool>
@@ -1968,7 +2068,14 @@ namespace GeographicDynamic_DAL.Models.WindbreakFirstStepMethods
                         }
                     }
 
-                    workbook.SaveAs(ExcelDestinationPath + $"\\{ExcelName}.xlsx");
+                    // Create result folder if it doesn't exist
+                    string resultFolderPath = Path.Combine(ExcelDestinationPath, "result");
+                    if (!Directory.Exists(resultFolderPath))
+                    {
+                        Directory.CreateDirectory(resultFolderPath);
+                    }
+
+                    workbook.SaveAs(Path.Combine(resultFolderPath, $"{ExcelName}.xlsx"));
                 }
 
                 return new Result<bool>
@@ -2104,7 +2211,14 @@ namespace GeographicDynamic_DAL.Models.WindbreakFirstStepMethods
                         worksheet.Cell(rowNum, "AN").Value = qarsafariGrouped?.UniqId;
                     }
 
-                    workbook.SaveAs(ExcelDestinationPath + "rootExcel.xlsx");
+                    // Create result folder if it doesn't exist
+                    string resultFolderPath = Path.Combine(ExcelDestinationPath, "result");
+                    if (!Directory.Exists(resultFolderPath))
+                    {
+                        Directory.CreateDirectory(resultFolderPath);
+                    }
+
+                    workbook.SaveAs(Path.Combine(resultFolderPath, "rootExcel.xlsx"));
                 }
 
                 return new Result<bool>
