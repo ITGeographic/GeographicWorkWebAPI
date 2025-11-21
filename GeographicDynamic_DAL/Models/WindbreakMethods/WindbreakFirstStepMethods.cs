@@ -2264,6 +2264,28 @@ namespace GeographicDynamic_DAL.Models.WindbreakFirstStepMethods
                 // Copy the file to the destination folder
                 File.Copy(ExcelPath, destinationFilePath, true); // 'true' to overwrite if the file already exists
 
+                // Copy Access file if provided
+                if (!string.IsNullOrEmpty(excelReadDTO.AccessFilePath) && File.Exists(excelReadDTO.AccessFilePath))
+                {
+                    string accessFileName = Path.GetFileName(excelReadDTO.AccessFilePath);
+                    string destinationAccessFilePath = Path.Combine(resultFolderPath, accessFileName);
+                    File.Copy(excelReadDTO.AccessFilePath, destinationAccessFilePath, true);
+                }
+
+                // Copy images folder if provided
+                if (!string.IsNullOrEmpty(excelReadDTO.FolderPath) && Directory.Exists(excelReadDTO.FolderPath))
+                {
+                    string folderName = Path.GetFileName(excelReadDTO.FolderPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+                    if (string.IsNullOrEmpty(folderName))
+                    {
+                        folderName = "Images"; // Default name if folder path ends with separator
+                    }
+                    string destinationFolderPath = Path.Combine(resultFolderPath, folderName);
+                    
+                    // Copy directory recursively
+                    CopyDirectory(excelReadDTO.FolderPath, destinationFolderPath, true);
+                }
+
                 // Open the copied Excel file and modify it using ClosedXML
                 using (var workbook = new XLWorkbook(destinationFilePath))
                 {
@@ -2379,13 +2401,41 @@ namespace GeographicDynamic_DAL.Models.WindbreakFirstStepMethods
                 // Handle any exceptions that occurred during file operations or Excel manipulation
                 result.Success = false;
                 result.StatusCode = System.Net.HttpStatusCode.InternalServerError;
-                result.Message = $"ძირი ექსელის გადაკოპირებისა და მასში ახალი UniqId ჩაწერისას მოხდა შეცდომა. შეცდომის რიგი: {ex.Message}";
+                result.Message = $"ძირი ექსელის, Access ფაილის და სურათების ფოლდერის გადაკოპირებისა და ექსელში ახალი UniqId ჩაწერისას მოხდა შეცდომა. შეცდომის რიგი: {ex.Message}";
                 // Optionally log the exception details for troubleshooting
             }
 
             return result;
         }
 
+
+        // Helper method to copy directory recursively
+        private void CopyDirectory(string sourceDir, string destinationDir, bool overwrite)
+        {
+            DirectoryInfo dir = new DirectoryInfo(sourceDir);
+            DirectoryInfo[] dirs = dir.GetDirectories();
+
+            // Create the destination directory if it doesn't exist
+            if (!Directory.Exists(destinationDir))
+            {
+                Directory.CreateDirectory(destinationDir);
+            }
+
+            // Copy all files
+            FileInfo[] files = dir.GetFiles();
+            foreach (FileInfo file in files)
+            {
+                string tempPath = Path.Combine(destinationDir, file.Name);
+                file.CopyTo(tempPath, overwrite);
+            }
+
+            // Copy all subdirectories recursively
+            foreach (DirectoryInfo subdir in dirs)
+            {
+                string tempPath = Path.Combine(destinationDir, subdir.Name);
+                CopyDirectory(subdir.FullName, tempPath, overwrite);
+            }
+        }
 
         // ამრგვალებს 5 ის ჯერადზე გადაცემულ რიცხვს
         static int RoundToNearest(double number)

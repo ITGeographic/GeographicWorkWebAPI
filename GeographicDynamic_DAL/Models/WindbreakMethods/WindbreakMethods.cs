@@ -2505,6 +2505,28 @@ namespace GeographicDynamic_DAL.Models.WindbreakMethods
                 // Copy the file to the destination folder
                 File.Copy(ExcelPath, destinationFilePath, true); // 'true' to overwrite if the file already exists
 
+                // Copy Access file if provided
+                if (!string.IsNullOrEmpty(excelReadDTO.AccessFilePath) && File.Exists(excelReadDTO.AccessFilePath))
+                {
+                    string accessFileName = Path.GetFileName(excelReadDTO.AccessFilePath);
+                    string destinationAccessFilePath = Path.Combine(resultFolderPath, accessFileName);
+                    File.Copy(excelReadDTO.AccessFilePath, destinationAccessFilePath, true);
+                }
+
+                // Copy images folder if provided
+                if (!string.IsNullOrEmpty(excelReadDTO.FolderPath) && Directory.Exists(excelReadDTO.FolderPath))
+                {
+                    string folderName = Path.GetFileName(excelReadDTO.FolderPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+                    if (string.IsNullOrEmpty(folderName))
+                    {
+                        folderName = "Images"; // Default name if folder path ends with separator
+                    }
+                    string destinationFolderPath = Path.Combine(resultFolderPath, folderName);
+                    
+                    // Copy directory recursively
+                    CopyDirectory(excelReadDTO.FolderPath, destinationFolderPath, true);
+                }
+
                 // Open the copied Excel file and modify it using ClosedXML
                 using (var workbook = new XLWorkbook(destinationFilePath))
                 {
@@ -2624,7 +2646,7 @@ namespace GeographicDynamic_DAL.Models.WindbreakMethods
                 // Handle any exceptions that occurred during file operations or Excel manipulation
                 result.Success = false;
                 result.StatusCode = System.Net.HttpStatusCode.InternalServerError;
-                result.Message = $"ძირი ექსელის გადაკოპირებისა და მასში ახალი UniqId ჩაწერისას მოხდა შეცდომა. შეცდომის რიგი: {ex.Message}";
+                result.Message = $"ძირი ექსელის, Access ფაილის და სურათების ფოლდერის გადაკოპირებისა და ექსელში ახალი UniqId ჩაწერისას მოხდა შეცდომა. შეცდომის რიგი: {ex.Message}";
                 // Optionally log the exception details for troubleshooting
             }
 
