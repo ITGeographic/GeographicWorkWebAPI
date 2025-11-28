@@ -47,6 +47,26 @@ namespace GeographicWorkWebAPI.Controllers
 
             return Ok(new { savedPath });
         }
+        [HttpPost("upload-excel")]
+        public async Task<IActionResult> UploadExcelFile([FromForm] IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest("No file provided");
+
+            string saveFolder = @"\\server\Programmers\Alex_Script\Windbreak\Calculations\uploads";
+
+            if (!Directory.Exists(saveFolder))
+                Directory.CreateDirectory(saveFolder);
+
+            string savedPath = Path.Combine(saveFolder, file.FileName);
+
+            using (var stream = new FileStream(savedPath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            return Ok(new { savedPath });
+        }
 
         [HttpPost("ExcelCalculationsFirstStep")]
         public IActionResult ExcelCalculations(ExcelReadDTO excelReadDTO)
