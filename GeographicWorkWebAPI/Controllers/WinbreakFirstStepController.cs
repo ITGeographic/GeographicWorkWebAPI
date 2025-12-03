@@ -27,7 +27,7 @@ namespace GeographicWorkWebAPI.Controllers
             return BadRequest(result);
         }
 
-        [HttpPost("upload-access")]
+        [HttpPost("upload-access-pirveliEtapi")]
         public async Task<IActionResult> UploadAccessFile([FromForm] IFormFile file)
         {
             if (file == null || file.Length == 0)
@@ -47,7 +47,7 @@ namespace GeographicWorkWebAPI.Controllers
 
             return Ok(new { savedPath });
         }
-        [HttpPost("upload-excel")]
+        [HttpPost("upload-excel-pirveliEtapi")]
         public async Task<IActionResult> UploadExcelFile([FromForm] IFormFile file)
         {
             if (file == null || file.Length == 0)
