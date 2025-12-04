@@ -84,6 +84,20 @@ namespace GeographicDynamic_DAL.Repository
                                 FileInfo fileInfo = new FileInfo(files[0]);
                                 formattedDate = fileInfo.LastWriteTime.ToString("MM/dd/yy");
                             }
+                            catch (OutOfMemoryException)
+                            {
+                                // Out of memory - fallback to modified date
+                                FileInfo fileInfo = new FileInfo(files[0]);
+                                formattedDate = fileInfo.LastWriteTime.ToString("MM/dd/yy");
+                                GC.Collect();
+                                GC.WaitForPendingFinalizers();
+                            }
+                            catch (Exception)
+                            {
+                                // Any other exception - fallback to modified date
+                                FileInfo fileInfo = new FileInfo(files[0]);
+                                formattedDate = fileInfo.LastWriteTime.ToString("MM/dd/yy");
+                            }
 
                         }
 
@@ -108,6 +122,20 @@ namespace GeographicDynamic_DAL.Repository
                                 catch (ArgumentException)
                                 {
                                     // Date Taken property not found, fallback to modified date
+                                    FileInfo fileInfo = new FileInfo(file);
+                                    dtaken = fileInfo.LastWriteTime;
+                                }
+                                catch (OutOfMemoryException)
+                                {
+                                    // Out of memory - fallback to modified date and force GC
+                                    FileInfo fileInfo = new FileInfo(file);
+                                    dtaken = fileInfo.LastWriteTime;
+                                    GC.Collect();
+                                    GC.WaitForPendingFinalizers();
+                                }
+                                catch (Exception)
+                                {
+                                    // Any other exception - fallback to modified date
                                     FileInfo fileInfo = new FileInfo(file);
                                     dtaken = fileInfo.LastWriteTime;
                                 }
@@ -476,73 +504,96 @@ namespace GeographicDynamic_DAL.Repository
 
                         var PhotoDate = "";
                         string photoNCorrected = "";
-                        // ფოტოების გადასანომრი ციკლი 
+                        
+                        // First pass: Rename all files to random numbers to avoid conflicts
+                        List<string> randomFilePaths = new List<string>();
                         foreach (FileInfo f6 in infos1)
                         {
                             if (!f6.Name.Contains(".db"))
                             {
-                                //var ext = Path.GetExtension(f6.FullName);
-                                ////var newPhotoNamePath = f6.FullName.Replace(f6.Name, Convert.ToString(photocount) + ext);
-                                //var newPhotoNamePath = f6.FullName;
-                                //File.Move(f6.FullName, newPhotoNamePath); // ar vnomravt fotoebs tetritskaroSi
-
                                 var ext = Path.GetExtension(f6.FullName);
-                                var newPhotoNamePath = f6.FullName.Replace(f6.Name, Convert.ToString(photocount) + ext);
-                                File.Move(f6.FullName, newPhotoNamePath);
-
-                                photoN += Convert.ToString(photocount) + "/";
-
-                                //photoN += Convert.ToInt32(Path.GetFileNameWithoutExtension(f6.FullName)) + "/";
-                                //ფოტოს თარიღის წამოღება
-                                bool isWritten = false;
-                                if (!isWritten)
+                                
+                                // Generate a large random number for temporary name
+                                long tempRandomNumber = random.Next(100000000, 999999999);
+                                var tempPhotoNamePath = f6.FullName.Replace(f6.Name, Convert.ToString(tempRandomNumber) + ext);
+                                
+                                // Ensure temp name doesn't exist (very unlikely but check anyway)
+                                while (File.Exists(tempPhotoNamePath))
                                 {
-                                    DateTime photoDate;
-                                    DateTime dtaken;
-                                    try
-                                    {
-                                        // Try to get the Date Taken property
-                                        using (Image myImage = Image.FromFile(@newPhotoNamePath))
-                                        {
-                                            PropertyItem propItem = myImage.GetPropertyItem(306);
-                                            string sdate = Encoding.UTF8.GetString(propItem.Value).Trim();
-                                            string secondhalf = sdate.Substring(sdate.IndexOf(" "), (sdate.Length - sdate.IndexOf(" ")));
-                                            string firsthalf = sdate.Substring(0, 10);
-                                            firsthalf = firsthalf.Replace(":", "-");
-                                            sdate = firsthalf + secondhalf;
-                                            dtaken = DateTime.Parse(sdate, CultureInfo.InvariantCulture);
-                                        }
-                                    }
-                                    catch (ArgumentException)
-                                    {
-                                        // Date Taken property not found, fallback to modified date
-                                        dtaken = f6.LastWriteTime;
-                                    }
-                                    ////var modifiedDate1 = f6.LastWriteTime;
-                                    ////ვიღებთ ფოტოს data taken-ს modify თარიღის ნაცვლად
-                                    //Image myImage = Image.FromFile(@newPhotoNamePath);
-                                    //PropertyItem propItem = myImage.GetPropertyItem(306);
-                                    //DateTime dtaken;
-
-                                    ////Convert date taken metadata to a DateTime object
-                                    //string sdate = Encoding.UTF8.GetString(propItem.Value).Trim();
-                                    //string secondhalf = sdate.Substring(sdate.IndexOf(" "), (sdate.Length - sdate.IndexOf(" ")));
-                                    //string firsthalf = sdate.Substring(0, 10);
-                                    //firsthalf = firsthalf.Replace(":", "-");
-                                    //sdate = firsthalf + secondhalf;
-                                    //dtaken = DateTime.Parse(sdate);
-
-                                    var formatInfo = new CultureInfo("en-US").DateTimeFormat;
-                                    formatInfo.DateSeparator = "-";
-                                    //PhotoDate = modifiedDate1.ToString("dd-MM-yyyy", formatInfo);
-                                    //ვიღებთ ფოტოს data taken-ს modify თარიღის ნაცვლად
-                                    PhotoDate = dtaken.ToString("dd-MM-yyyy", formatInfo);
+                                    tempRandomNumber = random.Next(100000000, 999999999);
+                                    tempPhotoNamePath = f6.FullName.Replace(f6.Name, Convert.ToString(tempRandomNumber) + ext);
                                 }
-                                isWritten = true;
-                                photocount++;
-
+                                
+                                // Rename file to random number
+                                File.Move(f6.FullName, tempPhotoNamePath);
+                                randomFilePaths.Add(tempPhotoNamePath);
                             }
+                        }
+                        
+                        // Second pass: Rename all files from random numbers to sequential numbers (photocount)
+                        foreach (string randomFilePath in randomFilePaths)
+                        {
+                            var ext = Path.GetExtension(randomFilePath);
+                            var newPhotoNamePath = randomFilePath.Replace(Path.GetFileName(randomFilePath), Convert.ToString(photocount) + ext);
+                            
+                            // Rename from random number to sequential number
+                            File.Move(randomFilePath, newPhotoNamePath);
+                            
+                            photoN += Convert.ToString(photocount) + "/";
 
+                            //ფოტოს თარიღის წამოღება
+                            bool isWritten = false;
+                            if (!isWritten)
+                            {
+                                DateTime photoDate;
+                                DateTime dtaken;
+                                FileInfo fileInfo = new FileInfo(newPhotoNamePath);
+                                try
+                                {
+                                    // Try to get the Date Taken property
+                                    using (Image myImage = Image.FromFile(@newPhotoNamePath))
+                                    {
+                                        PropertyItem propItem = myImage.GetPropertyItem(306);
+                                        string sdate = Encoding.UTF8.GetString(propItem.Value).Trim();
+                                        string secondhalf = sdate.Substring(sdate.IndexOf(" "), (sdate.Length - sdate.IndexOf(" ")));
+                                        string firsthalf = sdate.Substring(0, 10);
+                                        firsthalf = firsthalf.Replace(":", "-");
+                                        sdate = firsthalf + secondhalf;
+                                        dtaken = DateTime.Parse(sdate, CultureInfo.InvariantCulture);
+                                    }
+                                }
+                                catch (ArgumentException)
+                                {
+                                    // Date Taken property not found, fallback to modified date
+                                    dtaken = fileInfo.LastWriteTime;
+                                }
+                                catch (OutOfMemoryException)
+                                {
+                                    // Out of memory - fallback to modified date and force GC
+                                    dtaken = fileInfo.LastWriteTime;
+                                    GC.Collect();
+                                    GC.WaitForPendingFinalizers();
+                                }
+                                catch (Exception)
+                                {
+                                    // Any other exception - fallback to modified date
+                                    dtaken = fileInfo.LastWriteTime;
+                                }
+
+                                var formatInfo = new CultureInfo("en-US").DateTimeFormat;
+                                formatInfo.DateSeparator = "-";
+                                //ვიღებთ ფოტოს data taken-ს modify თარიღის ნაცვლად
+                                PhotoDate = dtaken.ToString("dd-MM-yyyy", formatInfo);
+                            }
+                            isWritten = true;
+                            photocount++;
+                            
+                            // Force garbage collection every 50 images to prevent memory issues
+                            if (photocount % 50 == 0)
+                            {
+                                GC.Collect();
+                                GC.WaitForPendingFinalizers();
+                            }
                         }
                         // SQL ბაზაში დამატება და ცვლილებების დამახსოვრება 
                         GadanomriliFotoebi photo = new GadanomriliFotoebi();
@@ -974,6 +1025,32 @@ namespace GeographicDynamic_DAL.Repository
             //    };
             //}
             #endregion
+
+            // Copy Photos folder to result folder based on ExcelDestinationPath
+            try
+            {
+                string resultFolderPath = Path.Combine(excelReadDTO.ExcelDestinationPath, "result");
+                
+                // Ensure result folder exists
+                if (!Directory.Exists(resultFolderPath))
+                {
+                    Directory.CreateDirectory(resultFolderPath);
+                }
+                
+                // Copy Photos folder if provided
+                if (!string.IsNullOrEmpty(excelReadDTO.FolderPath) && Directory.Exists(excelReadDTO.FolderPath))
+                {
+                    string photosDestinationPath = Path.Combine(resultFolderPath, "Photos");
+                    
+                    // Copy directory recursively using VisualBasic FileSystem
+                    Microsoft.VisualBasic.FileIO.FileSystem.CopyDirectory(excelReadDTO.FolderPath, photosDestinationPath, true);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't fail the entire operation
+                System.Diagnostics.Debug.WriteLine($"Error copying Photos folder: {ex.Message}");
+            }
 
             return new Result<bool>
             {
