@@ -1258,61 +1258,54 @@ namespace GeographicDynamic_DAL.Models.WindbreakMethods
             }
         }
         // აქ გვჭირდება შემმოწმება ფუნქციის ჩაწერა რომელიც გადაამოწმებს თუ სადმე ხეხილი მეორდება უბანზე 
-        public Result<bool> QarsafariXexilisShemowmeba()
-
+        public XexiliResult QarsafariXexilisShemowmeba()
         {
-
-            GeographicDynamicDbContext geographicDynamicDbContext = new GeographicDynamicDbContext();
+            GeographicDynamicDbContext db = new GeographicDynamicDbContext();
 
             try
             {
-                List<Qarsafari> qarsafariList = geographicDynamicDbContext.Qarsafaris.ToList();
-                List<double?> distinctUniqIds = geographicDynamicDbContext.Qarsafaris.OrderBy(m => m.UniqId).Select(q => q.UniqId).Distinct().ToList();
-                var count = 0;
-                foreach (var uniqueID in distinctUniqIds)
-                {
-                    List<string> xexilebiList = new List<string>();
-                    List<Qarsafari> qarsafaris = geographicDynamicDbContext.Qarsafaris.Where(x => x.UniqId == uniqueID).ToList();
-                    foreach (var item in qarsafaris)
+                // Implement stored procedure logic: selectDublikatebiSaxeobebi
+                // Groups by LiterId, UniqId, WoodyPlantSpecies and finds duplicates (COUNT > 1)
+                var duplicates = db.Qarsafaris
+                    .GroupBy(x => new { x.LiterId, x.UniqId, x.WoodyPlantSpecies })
+                    .Where(g => g.Count() > 1)
+                    .Select(g => new GeographicDynamicWebAPI.Wrappers.DuplicateQarsafariDTO
                     {
-                        if (!string.IsNullOrEmpty(item.WoodyPlantSpecies))
-                        {
-                            xexilebiList.Add(item.WoodyPlantSpecies);
-                        }
-                    }
-                    if (xexilebiList != null && xexilebiList.Count != xexilebiList.Distinct().Count())
-                    {
-                        count++;
-                    }
-                }
-                if (count > 0)
+                        LiterId = g.Key.LiterId.HasValue ? (int)g.Key.LiterId.Value : 0,
+                        UniqId = g.Key.UniqId.HasValue ? (int)g.Key.UniqId.Value : 0
+                    })
+                    .Distinct()
+                    .ToList();
+
+                if (duplicates.Count > 0)
                 {
-                    return new Result<bool>
+                    return new XexiliResult
                     {
                         Success = false,
-                        StatusCode = System.Net.HttpStatusCode.BadGateway,
-                        Message = "მოხდა შეცდომა! ხეხილის ჯიში მეორდება"
+                        Message = "მოხდა შეცდომა! ხეხილის ჯიში მეორდება",
+                        Data = duplicates
                     };
-
                 }
 
-                return new Result<bool>
+                return new XexiliResult
                 {
                     Success = true,
-                    StatusCode = System.Net.HttpStatusCode.OK,
-                    Message = "წარმატებით დასრულდა გადაწერა გადანომვრის პროცესი"
+                    Message = "დუბლიკატები არ მოიძებნა",
+                    Data = new List<GeographicDynamicWebAPI.Wrappers.DuplicateQarsafariDTO>()
                 };
             }
             catch (Exception ex)
             {
-                return new Result<bool>
+                return new XexiliResult
                 {
                     Success = false,
-                    StatusCode = System.Net.HttpStatusCode.BadGateway,
-                    Message = "მოხდა შეცდომა გადანომვრის პროცესის დროს" + ex.Message
+                    Message = "შეცდომა შემოწმების პროცესის დროს: " + ex.Message,
+                    Data = new List<GeographicDynamicWebAPI.Wrappers.DuplicateQarsafariDTO>()
                 };
             }
         }
+
+
         //ფუნქცია გამოიყენება რომ დაიგრუპოს ხეხილის სახეობები და ამასთან მიყვეს სხვა პროცედურებიც რაც დაგრუპვაში შედის (პატარა ექსელი) 
         public Result<bool> QarsafariToQarsafariGrouped()
         {

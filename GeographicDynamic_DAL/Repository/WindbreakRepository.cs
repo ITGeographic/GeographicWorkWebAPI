@@ -11,6 +11,7 @@ using GeographicDynamic_DAL.Models.WindbreakMethods;
 using ClosedXML.Excel;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.Net;
 namespace GeographicDynamic_DAL.Repository
 {
     public class WindbreakRepository : IWindbreak
@@ -764,14 +765,17 @@ namespace GeographicDynamic_DAL.Repository
             }
 
             ///////////// ჯერ არ ვიყიენებთ მარა გამოსაყენებელია ხეხილში ვამოწმებთ დუბლიკატები ხომ არ არის
-            var QarsafariXexilisShemowmebaResult = _windbreakMethods.QarsafariXexilisShemowmeba();
-            if (QarsafariXexilisShemowmebaResult.Success == false)
+            var xexiliResult = _windbreakMethods.QarsafariXexilisShemowmeba();
+
+            if (!xexiliResult.Success)
             {
+                // Build message with duplicate UniqId and LiterId pairs
+                var duplicateInfo = string.Join(", ", xexiliResult.Data.Select(d => $"UniqId: {d.UniqId}, LiterId: {d.LiterId}"));
                 return new Result<bool>
                 {
                     Success = false,
                     StatusCode = System.Net.HttpStatusCode.BadGateway,
-                    Message = QarsafariXexilisShemowmebaResult.Message
+                    Message = $"{xexiliResult.Message}. Duplicates found: {duplicateInfo}"
                 };
             }
 
