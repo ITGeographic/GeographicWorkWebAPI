@@ -767,7 +767,7 @@ namespace GeographicDynamic_DAL.Repository
             if (!xexiliResult.Success)
             {
                 // Build message with duplicate UniqId and LiterId pairs
-                var duplicateInfo = string.Join(", ", xexiliResult.Data.Select(d => $"UniqId: {d.UniqId}, LiterId: {d.LiterId}"));
+                var duplicateInfo = string.Join(", ", xexiliResult.Data.Select(d => $"[UniqId: {d.UniqId}, LiterId: {d.LiterId}, UniqIdOld: {d.UniqIdOld}]"));
                 return new Result<bool>
                 {
                     Success = false,

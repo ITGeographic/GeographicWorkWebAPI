@@ -1267,12 +1267,14 @@ namespace GeographicDynamic_DAL.Models.WindbreakMethods
                 // Implement stored procedure logic: selectDublikatebiSaxeobebi
                 // Groups by LiterId, UniqId, WoodyPlantSpecies and finds duplicates (COUNT > 1)
                 var duplicates = db.Qarsafaris
-                    .GroupBy(x => new { x.LiterId, x.UniqId, x.WoodyPlantSpecies })
+                    .GroupBy(x => new { x.LiterId, x.UniqId, x.WoodyPlantSpecies,x.UniqIdOld })
                     .Where(g => g.Count() > 1)
                     .Select(g => new GeographicDynamicWebAPI.Wrappers.DuplicateQarsafariDTO
                     {
                         LiterId = g.Key.LiterId.HasValue ? (int)g.Key.LiterId.Value : 0,
-                        UniqId = g.Key.UniqId.HasValue ? (int)g.Key.UniqId.Value : 0
+                        UniqId = g.Key.UniqId.HasValue ? (int)g.Key.UniqId.Value : 0,
+                        UniqIdOld = g.Key.UniqIdOld.HasValue ? (int)g.Key.UniqIdOld.Value : (int)g.Key.UniqId.Value
+
                     })
                     .Distinct()
                     .ToList();

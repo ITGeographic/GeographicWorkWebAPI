@@ -13,5 +13,6 @@ namespace GeographicDynamicWebAPI.Wrappers
     {
         public int LiterId { get; set; }
         public int UniqId { get; set; }
+        public int UniqIdOld { get; set; }
     }
 }
